@@ -31,6 +31,10 @@ export function ConfirmationDialog({
 }: ConfirmationDialogProps) {
 	const { colors } = useAppTheme();
 
+	if (!visible) {
+		return null;
+	}
+
 	return (
 		<Portal>
 			<Dialog

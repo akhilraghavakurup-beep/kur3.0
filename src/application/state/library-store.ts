@@ -3,6 +3,72 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Track } from '../../domain/entities/track';
 import type { Playlist } from '../../domain/entities/playlist';
+import { Duration } from '../../domain/value-objects/duration';
+import { TrackId } from '../../domain/value-objects/track-id';
+
+function normalizeTrack(track: Track): Track {
+	const rawId = track.id as unknown;
+	const rawDuration = track.duration as unknown;
+	const rawAddedAt = track.addedAt as unknown;
+
+	const normalizedId =
+		typeof rawId === 'string'
+			? TrackId.tryFromString(rawId) ?? track.id
+			: rawId &&
+				  typeof rawId === 'object' &&
+				  'value' in rawId &&
+				  typeof (rawId as { value?: unknown }).value === 'string'
+				? TrackId.tryFromString((rawId as { value: string }).value) ?? track.id
+				: track.id;
+
+	const normalizedDuration =
+		typeof rawDuration === 'number'
+			? Duration.fromMilliseconds(rawDuration)
+			: rawDuration &&
+				  typeof rawDuration === 'object' &&
+				  'totalMilliseconds' in rawDuration &&
+				  typeof (rawDuration as { totalMilliseconds?: unknown }).totalMilliseconds ===
+						'number'
+				? Duration.fromMilliseconds(
+						(rawDuration as { totalMilliseconds: number }).totalMilliseconds
+					)
+				: track.duration;
+
+	return {
+		...track,
+		id: normalizedId,
+		duration: normalizedDuration,
+		addedAt:
+			typeof rawAddedAt === 'string' || typeof rawAddedAt === 'number'
+				? new Date(rawAddedAt)
+				: track.addedAt,
+	};
+}
+
+function normalizePlaylist(playlist: Playlist): Playlist {
+	return {
+		...playlist,
+		tracks: playlist.tracks.map((playlistTrack, index) => ({
+			...playlistTrack,
+			track: normalizeTrack(playlistTrack.track),
+			addedAt:
+				typeof playlistTrack.addedAt === 'string' ||
+				typeof playlistTrack.addedAt === 'number'
+					? new Date(playlistTrack.addedAt)
+					: playlistTrack.addedAt,
+			position:
+				typeof playlistTrack.position === 'number' ? playlistTrack.position : index,
+		})),
+		createdAt:
+			typeof playlist.createdAt === 'string' || typeof playlist.createdAt === 'number'
+				? new Date(playlist.createdAt)
+				: playlist.createdAt,
+		updatedAt:
+			typeof playlist.updatedAt === 'string' || typeof playlist.updatedAt === 'number'
+				? new Date(playlist.updatedAt)
+				: playlist.updatedAt,
+	};
+}
 
 interface LibraryState {
 	tracks: Track[];
@@ -274,6 +340,13 @@ export const useLibraryStore = create<LibraryState>()(
 			onRehydrateStorage: () => (state) => {
 				if (state) {
 					state.favorites = new Set(state.favorites as unknown as string[]);
+					state.tracks = state.tracks.map((track) => normalizeTrack(track));
+					state.playlists = state.playlists.map((playlist) => normalizePlaylist(playlist));
+					state.lastSyncedAt =
+						typeof state.lastSyncedAt === 'string' ||
+						typeof state.lastSyncedAt === 'number'
+							? new Date(state.lastSyncedAt)
+							: state.lastSyncedAt;
 				}
 			},
 		}

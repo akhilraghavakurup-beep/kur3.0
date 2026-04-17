@@ -50,6 +50,10 @@ export function InputDialog({
 
 	const isConfirmDisabled = !value.trim();
 
+	if (!visible) {
+		return null;
+	}
+
 	return (
 		<Portal>
 			<Dialog

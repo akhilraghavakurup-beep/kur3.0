@@ -42,6 +42,10 @@ function InfoRow({ icon: IconComponent, label, value }: InfoRowProps) {
 export function VersionDialog({ visible, onDismiss }: VersionDialogProps) {
 	const { colors } = useAppTheme();
 
+	if (!visible) {
+		return null;
+	}
+
 	const appVersion = Constants.expoConfig?.version ?? '1.0.0';
 	const buildNumber = Platform.select({
 		ios: Constants.expoConfig?.ios?.buildNumber,

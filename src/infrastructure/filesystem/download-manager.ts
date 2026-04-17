@@ -25,6 +25,16 @@ function getSafeTrackId(trackId: string): string {
 	return trackId.replace(/[^a-zA-Z0-9_-]/g, '_');
 }
 
+function getSafeFileName(name: string): string {
+	const trimmed = name.trim();
+	const sanitized = trimmed
+		.replace(/[<>:"/\\|?*\u0000-\u001F]/g, '')
+		.replace(/\s+/g, ' ')
+		.replace(/\.+$/g, '');
+
+	return sanitized || 'Audio';
+}
+
 export async function getDownloadsDirectory(): Promise<string> {
 	const dir = FileSystem.documentDirectory + DOWNLOADS_DIR;
 	await FileSystem.makeDirectoryAsync(dir, { intermediates: true }).catch(() => {});
@@ -250,6 +260,7 @@ export async function copyDirectoryToDownloads(
 export async function exportAudioToExternalDirectory(
 	sourcePath: string,
 	trackId: string,
+	displayName: string,
 	format: string,
 	config: ExternalDownloadConfig
 ): Promise<Result<ExternalDownloadResult, Error>> {
@@ -259,13 +270,14 @@ export async function exportAudioToExternalDirectory(
 			return resolvedDirectory;
 		}
 
-		const fileName = `${getSafeTrackId(trackId)}.${format}`;
+		const baseFileName = getSafeFileName(displayName || getSafeTrackId(trackId));
+		const fileName = `${baseFileName}.${format}`;
 		await deleteExistingExternalFile(resolvedDirectory.data.uri, fileName);
 
 		const sourceUri = sourcePath.startsWith('file://') ? sourcePath : `file://${sourcePath}`;
 		const targetUri = await StorageAccessFramework.createFileAsync(
 			resolvedDirectory.data.uri,
-			getSafeTrackId(trackId),
+			baseFileName,
 			MIME_TYPES[format] ?? 'audio/*'
 		);
 		const base64 = await FileSystem.readAsStringAsync(sourceUri, {
