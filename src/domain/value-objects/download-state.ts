@@ -18,6 +18,8 @@ export interface DownloadInfo {
 export interface DownloadedTrackMetadata {
 	readonly trackId: string;
 	readonly filePath: string;
+	readonly externalFilePath?: string;
+	readonly externalDirectoryName?: string;
 	readonly fileSize: number;
 	readonly downloadedAt: number;
 	readonly sourcePlugin: string;
@@ -88,6 +90,8 @@ export function createFailedDownload(existing: DownloadInfo, error: string): Dow
 interface CreateDownloadedTrackMetadataParams {
 	trackId: string;
 	filePath: string;
+	externalFilePath?: string;
+	externalDirectoryName?: string;
 	fileSize: number;
 	sourcePlugin: string;
 	format: string;
@@ -104,6 +108,8 @@ export function createDownloadedTrackMetadata(
 	return Object.freeze({
 		trackId: params.trackId,
 		filePath: params.filePath,
+		externalFilePath: params.externalFilePath,
+		externalDirectoryName: params.externalDirectoryName,
 		fileSize: params.fileSize,
 		downloadedAt: Date.now(),
 		sourcePlugin: params.sourcePlugin,

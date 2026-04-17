@@ -32,6 +32,10 @@ vi.mock('@infrastructure/filesystem/download-manager', () => ({
 		success: true,
 		data: { filePath: '/downloads/test/', fileSize: 2048 },
 	}),
+	exportAudioToExternalDirectory: vi.fn().mockResolvedValue({
+		success: true,
+		data: { filePath: 'content://downloads/test.m4a', directoryName: 'Music' },
+	}),
 	deleteAudioFile: vi.fn().mockResolvedValue({ success: true, data: undefined }),
 	deleteDownloadDirectory: vi.fn().mockResolvedValue({ success: true, data: undefined }),
 	getFileInfo: vi.fn().mockResolvedValue({ exists: true, size: 1024 }),

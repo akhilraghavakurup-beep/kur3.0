@@ -1,11 +1,29 @@
 import * as FileSystem from 'expo-file-system/legacy';
+import { StorageAccessFramework } from 'expo-file-system/legacy';
+import { Platform } from 'react-native';
 import type { Result } from '../../shared/types/result';
 import { ok, err } from '../../shared/types/result';
 import { getLogger } from '../../shared/services/logger';
+import { permissionService } from '../../application/services/permission-service';
+import type { DownloadLocationMode } from '../../application/state/settings-store';
 
 const logger = getLogger('DownloadManager');
 
 const DOWNLOADS_DIR = 'downloads/audio/';
+const MIME_TYPES: Record<string, string> = {
+	mp3: 'audio/mpeg',
+	m4a: 'audio/mp4',
+	aac: 'audio/aac',
+	flac: 'audio/flac',
+	wav: 'audio/wav',
+	ogg: 'audio/ogg',
+	opus: 'audio/ogg',
+	m3u8: 'application/vnd.apple.mpegurl',
+};
+
+function getSafeTrackId(trackId: string): string {
+	return trackId.replace(/[^a-zA-Z0-9_-]/g, '_');
+}
 
 export async function getDownloadsDirectory(): Promise<string> {
 	const dir = FileSystem.documentDirectory + DOWNLOADS_DIR;
@@ -14,7 +32,7 @@ export async function getDownloadsDirectory(): Promise<string> {
 }
 
 export function getDownloadFilePath(trackId: string, format: string = 'm4a'): string {
-	const safeTrackId = trackId.replace(/[^a-zA-Z0-9_-]/g, '_');
+	const safeTrackId = getSafeTrackId(trackId);
 	return FileSystem.documentDirectory + DOWNLOADS_DIR + `${safeTrackId}.${format}`;
 }
 
@@ -23,6 +41,49 @@ export type DownloadProgressCallback = (progress: number) => void;
 export interface DownloadResult {
 	filePath: string;
 	fileSize: number;
+}
+
+export interface ExternalDownloadConfig {
+	readonly mode: DownloadLocationMode;
+	readonly customDirectoryUri?: string | null;
+	readonly customDirectoryName?: string | null;
+}
+
+export interface ExternalDownloadResult {
+	readonly filePath: string;
+	readonly directoryName: string;
+}
+
+async function resolveExternalDirectory(
+	config: ExternalDownloadConfig
+): Promise<Result<{ uri: string; name: string }, Error>> {
+	if (Platform.OS !== 'android') {
+		return err(new Error('External download location is only supported on Android'));
+	}
+
+	if (config.mode === 'custom') {
+		if (!config.customDirectoryUri) {
+			return err(new Error('No custom download folder selected'));
+		}
+
+		return ok({
+			uri: config.customDirectoryUri,
+			name: config.customDirectoryName ?? 'Selected folder',
+		});
+	}
+
+	return permissionService.requestMusicDirectoryPermission();
+}
+
+async function deleteExistingExternalFile(directoryUri: string, fileName: string): Promise<void> {
+	const entries = await StorageAccessFramework.readDirectoryAsync(directoryUri);
+
+	for (const entryUri of entries) {
+		const decoded = decodeURIComponent(entryUri);
+		if (decoded.endsWith(`/${fileName}`)) {
+			await FileSystem.deleteAsync(entryUri, { idempotent: true }).catch(() => {});
+		}
+	}
 }
 
 export async function downloadAudioFile(
@@ -152,7 +213,7 @@ export async function copyDirectoryToDownloads(
 ): Promise<Result<DownloadResult, Error>> {
 	try {
 		await getDownloadsDirectory();
-		const safeTrackId = trackId.replace(/[^a-zA-Z0-9_-]/g, '_');
+		const safeTrackId = getSafeTrackId(trackId);
 		const destDir = FileSystem.documentDirectory + DOWNLOADS_DIR + `${safeTrackId}_hls/`;
 
 		await FileSystem.makeDirectoryAsync(destDir, { intermediates: true }).catch(() => {});
@@ -182,6 +243,53 @@ export async function copyDirectoryToDownloads(
 		);
 		return err(
 			error instanceof Error ? error : new Error(`Directory copy failed: ${String(error)}`)
+		);
+	}
+}
+
+export async function exportAudioToExternalDirectory(
+	sourcePath: string,
+	trackId: string,
+	format: string,
+	config: ExternalDownloadConfig
+): Promise<Result<ExternalDownloadResult, Error>> {
+	try {
+		const resolvedDirectory = await resolveExternalDirectory(config);
+		if (!resolvedDirectory.success) {
+			return resolvedDirectory;
+		}
+
+		const fileName = `${getSafeTrackId(trackId)}.${format}`;
+		await deleteExistingExternalFile(resolvedDirectory.data.uri, fileName);
+
+		const sourceUri = sourcePath.startsWith('file://') ? sourcePath : `file://${sourcePath}`;
+		const targetUri = await StorageAccessFramework.createFileAsync(
+			resolvedDirectory.data.uri,
+			getSafeTrackId(trackId),
+			MIME_TYPES[format] ?? 'audio/*'
+		);
+		const base64 = await FileSystem.readAsStringAsync(sourceUri, {
+			encoding: FileSystem.EncodingType.Base64,
+		});
+
+		await FileSystem.writeAsStringAsync(targetUri, base64, {
+			encoding: FileSystem.EncodingType.Base64,
+		});
+
+		logger.debug(`Exported download to external storage: ${targetUri}`);
+		return ok({
+			filePath: targetUri,
+			directoryName: resolvedDirectory.data.name,
+		});
+	} catch (error) {
+		logger.error(
+			'Export to external directory error',
+			error instanceof Error ? error : undefined
+		);
+		return err(
+			error instanceof Error
+				? error
+				: new Error(`Failed to export download: ${String(error)}`)
 		);
 	}
 }

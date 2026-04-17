@@ -17,9 +17,13 @@ import {
 	copyDirectoryToDownloads,
 	deleteAudioFile,
 	deleteDownloadDirectory,
+	exportAudioToExternalDirectory,
 	getFileInfo,
 } from '../../infrastructure/filesystem/download-manager';
-import type { DownloadResult } from '../../infrastructure/filesystem/download-manager';
+import type {
+	DownloadResult,
+	ExternalDownloadResult,
+} from '../../infrastructure/filesystem/download-manager';
 import type { Result } from '../../shared/types/result';
 import { ok, err } from '../../shared/types/result';
 import { getLogger } from '../../shared/services/logger';
@@ -121,6 +125,15 @@ export class DownloadService {
 				? await deleteDownloadDirectory(metadata.filePath)
 				: await deleteAudioFile(metadata.filePath);
 
+		if (metadata.externalFilePath) {
+			const externalDeleteResult = await deleteAudioFile(metadata.externalFilePath);
+			if (!externalDeleteResult.success) {
+				logger.warn(
+					`Failed to delete external file: ${externalDeleteResult.error.message}`
+				);
+			}
+		}
+
 		if (!deleteResult.success) {
 			logger.warn(`Failed to delete file: ${deleteResult.error.message}`);
 		}
@@ -215,12 +228,22 @@ export class DownloadService {
 				return this._failDownload(trackId, fileResult.error);
 			}
 
+			const exportResult = await this._exportForExternalAccess(
+				trackId,
+				fileResult.data.filePath,
+				streamResult.data.format ?? 'm4a'
+			);
+			if (!exportResult.success) {
+				logger.warn(`External export skipped: ${exportResult.error.message}`);
+			}
+
 			const artwork = getLargestArtwork(track.artwork);
 			this._completeDownload(
 				track,
 				fileResult.data,
 				streamResult.data.format ?? 'm4a',
-				artwork
+				artwork,
+				exportResult.success ? exportResult.data : undefined
 			);
 			return ok(undefined);
 		} catch (error) {
@@ -280,7 +303,8 @@ export class DownloadService {
 		track: Track,
 		file: DownloadResult,
 		format: string,
-		artwork: ReturnType<typeof getLargestArtwork>
+		artwork: ReturnType<typeof getLargestArtwork>,
+		externalFile?: ExternalDownloadResult
 	): void {
 		const trackId = track.id.value;
 		const store = useDownloadStore.getState();
@@ -288,6 +312,8 @@ export class DownloadService {
 		const metadata = createDownloadedTrackMetadata({
 			trackId,
 			filePath: file.filePath,
+			externalFilePath: externalFile?.filePath,
+			externalDirectoryName: externalFile?.directoryName,
 			fileSize: file.fileSize,
 			sourcePlugin: track.id.sourceType,
 			format,
@@ -373,6 +399,20 @@ export class DownloadService {
 			url: result.data.url,
 			format: result.data.format,
 			headers: result.data.headers,
+		});
+	}
+
+	private async _exportForExternalAccess(
+		trackId: string,
+		filePath: string,
+		format: string
+	): Promise<Result<ExternalDownloadResult, Error>> {
+		const settings = useSettingsStore.getState();
+
+		return exportAudioToExternalDirectory(filePath, trackId, format, {
+			mode: settings.downloadLocationMode,
+			customDirectoryUri: settings.customDownloadDirectoryUri,
+			customDirectoryName: settings.customDownloadDirectoryName,
 		});
 	}
 }

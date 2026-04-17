@@ -42,6 +42,7 @@ import type { ReactNode } from 'react';
 export default function PlaylistScreen() {
 	const insets = useSafeAreaInsets();
 	const { id } = useLocalSearchParams<{ id: string }>();
+	const playlistId = Array.isArray(id) ? id[0] : id;
 	const { colors } = useAppTheme();
 	const { playQueue, shufflePlay } = usePlayer();
 	const { success } = useToast();
@@ -51,7 +52,7 @@ export default function PlaylistScreen() {
 	const [renameDialogVisible, setRenameDialogVisible] = useState(false);
 	const [isEditMode, setIsEditMode] = useState(false);
 
-	const playlist = usePlaylist(id);
+	const playlist = usePlaylist(playlistId);
 	const removePlaylist = useLibraryStore((state) => state.removePlaylist);
 	const renamePlaylist = useLibraryStore((state) => state.renamePlaylist);
 	const reorderPlaylistTracks = useLibraryStore((state) => state.reorderPlaylistTracks);

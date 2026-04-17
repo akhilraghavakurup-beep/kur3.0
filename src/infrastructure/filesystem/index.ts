@@ -4,6 +4,7 @@ export {
 	downloadAudioFile,
 	copyToDownloads,
 	copyDirectoryToDownloads,
+	exportAudioToExternalDirectory,
 	deleteAudioFile,
 	deleteDownloadDirectory,
 	getFileInfo,
@@ -11,4 +12,6 @@ export {
 	clearAllDownloads,
 	type DownloadProgressCallback,
 	type DownloadResult,
+	type ExternalDownloadConfig,
+	type ExternalDownloadResult,
 } from './download-manager';

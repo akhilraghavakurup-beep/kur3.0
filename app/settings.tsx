@@ -1,4 +1,4 @@
-import { StyleSheet } from 'react-native';
+import { Platform, StyleSheet } from 'react-native';
 import { useCallback, useMemo, useState } from 'react';
 import { router } from 'expo-router';
 import { ConfirmationDialog } from '@/src/components/ui/confirmation-dialog';
@@ -18,6 +18,7 @@ import {
 	InfoIcon,
 	PlugIcon,
 	HardDriveIcon,
+	FolderOpenIcon,
 	SunMoonIcon,
 	LayoutGridIcon,
 	SlidersHorizontalIcon,
@@ -43,7 +44,7 @@ import { useEqualizer } from '@/src/hooks/use-equalizer';
 import { useClearDownloads } from '@/src/hooks/use-clear-downloads';
 import { useFactoryReset } from '@/src/hooks/use-factory-reset';
 import { useToast } from '@/src/hooks/use-toast';
-import Constants from 'expo-constants';
+import { permissionService } from '@/src/application/services/permission-service';
 
 export default function SettingsScreen() {
 	const { tracks, playlists, favorites } = useLibraryStore();
@@ -66,6 +67,10 @@ export default function SettingsScreen() {
 		setPreferredStreamQuality,
 		autoplaySimilarOnQueueEnd,
 		setAutoplaySimilarOnQueueEnd,
+		downloadLocationMode,
+		customDownloadDirectoryName,
+		setCustomDownloadDirectory,
+		resetDownloadLocation,
 	} = useSettingsStore();
 	const { stats } = useDownloadQueue();
 	const { isEnabled: eqEnabled, currentPreset } = useEqualizer();
@@ -155,12 +160,40 @@ export default function SettingsScreen() {
 		setFactoryResetDialogVisible(true);
 	};
 
+	const handleChangeDownloadLocation = useCallback(async () => {
+		if (Platform.OS !== 'android') {
+			success(
+				'Using app storage',
+				'Custom download folders are currently supported on Android only'
+			);
+			return;
+		}
+
+		const result = await permissionService.requestDirectoryPermission();
+		if (!result.success) {
+			return;
+		}
+
+		setCustomDownloadDirectory(result.data.uri, result.data.name);
+		success('Download folder updated', `New downloads will also be copied to ${result.data.name}`);
+	}, [setCustomDownloadDirectory, success]);
+
+	const handleUseMusicFolder = useCallback(() => {
+		resetDownloadLocation();
+		success('Download folder reset', 'New downloads will use the Music folder by default');
+	}, [resetDownloadLocation, success]);
+
 	const confirmFactoryReset = async () => {
 		await factoryReset();
 		setFactoryResetDialogVisible(false);
 	};
 
-	const appVersion = Constants.expoConfig?.version ?? '1.0.0';
+	const downloadLocationSubtitle =
+		downloadLocationMode === 'custom' && customDownloadDirectoryName
+			? `Custom folder: ${customDownloadDirectoryName}`
+			: 'Default: Music folder';
+
+	const appVersion = '3.0';
 
 	return (
 		<PageLayout
@@ -267,6 +300,21 @@ export default function SettingsScreen() {
 
 				<SettingsSection title={'Storage'}>
 					<SettingsItem
+						icon={FolderOpenIcon}
+						title={'Download location'}
+						subtitle={downloadLocationSubtitle}
+						onPress={handleChangeDownloadLocation}
+						showChevron={Platform.OS === 'android'}
+					/>
+					{downloadLocationMode === 'custom' && (
+						<SettingsItem
+							icon={HardDriveIcon}
+							title={'Use Music folder'}
+							subtitle={'Reset downloads back to the default Music folder'}
+							onPress={handleUseMusicFolder}
+						/>
+					)}
+					<SettingsItem
 						icon={HardDriveIcon}
 						title={'Storage used'}
 						subtitle={`${formatFileSize(stats.totalSize)} · ${stats.completedCount} files`}
@@ -338,7 +386,7 @@ export default function SettingsScreen() {
 					/>
 					<SettingsItem icon={InfoIcon} title={'Developed by'} subtitle={'Kurup'} />
 					<SettingsItem icon={InfoIcon} title={'Tested by'} subtitle={'Nemo'} />
-					<SettingsItem icon={InfoIcon} title={'Build'} subtitle={'smiling pookie'} />
+					<SettingsItem icon={InfoIcon} title={'Build'} subtitle={'Built for Kukki'} />
 				</SettingsSection>
 			</PlayerAwareScrollView>
 

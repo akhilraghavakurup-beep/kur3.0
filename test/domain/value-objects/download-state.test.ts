@@ -289,6 +289,8 @@ describe('download-state', () => {
 			const result = createDownloadedTrackMetadata({
 				trackId: 'track-1',
 				filePath: '/path/to/file.mp3',
+				externalFilePath: 'content://downloads/song.mp3',
+				externalDirectoryName: 'Music',
 				fileSize: 1_000_000,
 				sourcePlugin: 'youtube-music',
 				format: 'mp3',
@@ -302,6 +304,8 @@ describe('download-state', () => {
 			expect(result.artworkUrl).toBe('https://example.com/art.jpg');
 			expect(result.albumId).toBe('album-1');
 			expect(result.albumName).toBe('My Album');
+			expect(result.externalFilePath).toBe('content://downloads/song.mp3');
+			expect(result.externalDirectoryName).toBe('Music');
 		});
 
 		it('should be frozen', () => {

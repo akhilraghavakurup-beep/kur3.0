@@ -36,6 +36,10 @@ export class PermissionService {
 		return this._deduplicateRequest('directory', () => this._requestDirectoryInternal());
 	}
 
+	async requestMusicDirectoryPermission(): AsyncResult<DirectoryPermissionResult, Error> {
+		return this._deduplicateRequest('directory', () => this._requestMusicDirectoryInternal());
+	}
+
 	/**
 	 * Check if a permission request is currently in progress.
 	 */
@@ -98,6 +102,31 @@ export class PermissionService {
 			uri: permissions.directoryUri,
 			name,
 		});
+	}
+
+	private async _requestMusicDirectoryInternal(): AsyncResult<DirectoryPermissionResult, Error> {
+		try {
+			if (Platform.OS !== 'android') {
+				return err(new Error('Music folder selection is only supported on Android'));
+			}
+
+			const musicUri = StorageAccessFramework.getUriForDirectoryInRoot('Music');
+			const permissions =
+				await StorageAccessFramework.requestDirectoryPermissionsAsync(musicUri);
+
+			if (!permissions.granted) {
+				return err(new Error('Music folder selection cancelled'));
+			}
+
+			return ok({
+				uri: permissions.directoryUri,
+				name: 'Music',
+			});
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			logger.error('Music directory permission request failed', new Error(message));
+			return err(new Error(`Failed to access Music folder: ${message}`));
+		}
 	}
 
 	private async _requestDirectoryIOS(): AsyncResult<DirectoryPermissionResult, Error> {

@@ -16,6 +16,7 @@ export type ProgressBarStyle =
 	| 'glow-line'
 	| 'pulse-dots';
 export type PlayerBackground = 'artwork-blur' | 'artwork-solid' | 'theme-color';
+export type DownloadLocationMode = 'music' | 'custom';
 export type HomeContentPreference =
 	| 'All languages'
 	| 'Bollywood'
@@ -73,6 +74,9 @@ interface SettingsState {
 	playerBackground: PlayerBackground;
 	preferredStreamQuality: StreamQuality;
 	autoplaySimilarOnQueueEnd: boolean;
+	downloadLocationMode: DownloadLocationMode;
+	customDownloadDirectoryUri: string | null;
+	customDownloadDirectoryName: string | null;
 
 	setThemePreference: (preference: ThemePreference) => void;
 	setDefaultTab: (tab: DefaultTab) => void;
@@ -97,6 +101,9 @@ interface SettingsState {
 	setPlayerBackground: (background: PlayerBackground) => void;
 	setPreferredStreamQuality: (quality: StreamQuality) => void;
 	setAutoplaySimilarOnQueueEnd: (enabled: boolean) => void;
+	setDownloadLocationMode: (mode: DownloadLocationMode) => void;
+	setCustomDownloadDirectory: (uri: string, name: string) => void;
+	resetDownloadLocation: () => void;
 	resetAllSettings: () => void;
 }
 
@@ -128,7 +135,10 @@ export const useSettingsStore = create<SettingsState>()(
 			progressBarStyle: 'expressive',
 			playerBackground: 'artwork-blur',
 			preferredStreamQuality: 'high',
-					autoplaySimilarOnQueueEnd: true,
+			autoplaySimilarOnQueueEnd: true,
+			downloadLocationMode: 'music',
+			customDownloadDirectoryUri: null,
+			customDownloadDirectoryName: null,
 
 			setThemePreference: (preference: ThemePreference) => {
 				set({ themePreference: preference });
@@ -256,6 +266,23 @@ export const useSettingsStore = create<SettingsState>()(
 			setAutoplaySimilarOnQueueEnd: (enabled: boolean) => {
 				set({ autoplaySimilarOnQueueEnd: enabled });
 			},
+			setDownloadLocationMode: (mode: DownloadLocationMode) => {
+				set({ downloadLocationMode: mode });
+			},
+			setCustomDownloadDirectory: (uri: string, name: string) => {
+				set({
+					downloadLocationMode: 'custom',
+					customDownloadDirectoryUri: uri,
+					customDownloadDirectoryName: name,
+				});
+			},
+			resetDownloadLocation: () => {
+				set({
+					downloadLocationMode: 'music',
+					customDownloadDirectoryUri: null,
+					customDownloadDirectoryName: null,
+				});
+			},
 			resetAllSettings: () => {
 				set({
 					themePreference: 'system',
@@ -272,6 +299,9 @@ export const useSettingsStore = create<SettingsState>()(
 					playerBackground: 'artwork-blur',
 					preferredStreamQuality: 'high',
 					autoplaySimilarOnQueueEnd: true,
+					downloadLocationMode: 'music',
+					customDownloadDirectoryUri: null,
+					customDownloadDirectoryName: null,
 				});
 			},
 		}),
@@ -366,9 +396,17 @@ export const usePreferredStreamQuality = () =>
 export const useSetPreferredStreamQuality = () =>
 	useSettingsStore((state) => state.setPreferredStreamQuality);
 
-
 export const useAutoplaySimilarOnQueueEnd = () =>
 	useSettingsStore((state) => state.autoplaySimilarOnQueueEnd);
 
 export const useSetAutoplaySimilarOnQueueEnd = () =>
 	useSettingsStore((state) => state.setAutoplaySimilarOnQueueEnd);
+
+export const useDownloadLocationMode = () =>
+	useSettingsStore((state) => state.downloadLocationMode);
+
+export const useCustomDownloadDirectoryUri = () =>
+	useSettingsStore((state) => state.customDownloadDirectoryUri);
+
+export const useCustomDownloadDirectoryName = () =>
+	useSettingsStore((state) => state.customDownloadDirectoryName);
