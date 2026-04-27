@@ -42,7 +42,11 @@ function InfoRow({ icon: IconComponent, label, value }: InfoRowProps) {
 export function VersionDialog({ visible, onDismiss }: VersionDialogProps) {
 	const { colors } = useAppTheme();
 
-	const appVersion = Constants.expoConfig?.version ?? '1.0.0';
+	if (!visible) {
+		return null;
+	}
+
+	const appVersion = '3.0';
 	const buildNumber = Platform.select({
 		ios: Constants.expoConfig?.ios?.buildNumber,
 		android: Constants.expoConfig?.android?.versionCode?.toString(),
@@ -58,7 +62,7 @@ export function VersionDialog({ visible, onDismiss }: VersionDialogProps) {
 				onDismiss={onDismiss}
 				style={[styles.dialog, { backgroundColor: colors.surfaceContainerHigh }]}
 			>
-				<Dialog.Title style={{ color: colors.onSurface }}>About kurmusic</Dialog.Title>
+				<Dialog.Title style={{ color: colors.onSurface }}>About Kur Music</Dialog.Title>
 				<Dialog.Content>
 					<View style={styles.headerSection}>
 						<View
@@ -70,7 +74,9 @@ export function VersionDialog({ visible, onDismiss }: VersionDialogProps) {
 							<Icon as={PackageIcon} size={32} color={colors.onPrimaryContainer} />
 						</View>
 						<View style={styles.headerText}>
-							<Text variant={'headlineSmall'} style={{ color: colors.onSurface }}>kurmusic</Text>
+							<Text variant={'headlineSmall'} style={{ color: colors.onSurface }}>
+								Kur Music
+							</Text>
 							<Text variant={'bodyMedium'} style={{ color: colors.onSurfaceVariant }}>
 								Music Player
 							</Text>
@@ -87,7 +93,7 @@ export function VersionDialog({ visible, onDismiss }: VersionDialogProps) {
 						/>
 						<InfoRow icon={CodeIcon} label={'Developed by'} value={'Kurup'} />
 						<InfoRow icon={CodeIcon} label={'Tested by'} value={'Nemo'} />
-						<InfoRow icon={CodeIcon} label={'Build'} value={'smiling pookie'} />
+						<InfoRow icon={CodeIcon} label={'Build'} value={"AJ's Build"} />
 						<InfoRow icon={CodeIcon} label={'Expo SDK'} value={expoSdkVersion} />
 						<InfoRow icon={SmartphoneIcon} label={'Platform'} value={platformVersion} />
 						<InfoRow

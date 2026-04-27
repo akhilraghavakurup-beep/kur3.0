@@ -18,6 +18,9 @@ export interface DownloadInfo {
 export interface DownloadedTrackMetadata {
 	readonly trackId: string;
 	readonly filePath: string;
+	readonly fileName: string;
+	readonly metadataFilePath?: string;
+	readonly artworkFilePath?: string;
 	readonly externalFilePath?: string;
 	readonly externalDirectoryName?: string;
 	readonly fileSize: number;
@@ -90,6 +93,9 @@ export function createFailedDownload(existing: DownloadInfo, error: string): Dow
 interface CreateDownloadedTrackMetadataParams {
 	trackId: string;
 	filePath: string;
+	fileName: string;
+	metadataFilePath?: string;
+	artworkFilePath?: string;
 	externalFilePath?: string;
 	externalDirectoryName?: string;
 	fileSize: number;
@@ -108,6 +114,9 @@ export function createDownloadedTrackMetadata(
 	return Object.freeze({
 		trackId: params.trackId,
 		filePath: params.filePath,
+		fileName: params.fileName,
+		metadataFilePath: params.metadataFilePath,
+		artworkFilePath: params.artworkFilePath,
 		externalFilePath: params.externalFilePath,
 		externalDirectoryName: params.externalDirectoryName,
 		fileSize: params.fileSize,

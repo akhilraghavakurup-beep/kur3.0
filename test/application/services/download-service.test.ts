@@ -160,6 +160,7 @@ describe('DownloadService', () => {
 			useDownloadStore.getState().completeDownload('youtube-music:t1', {
 				trackId: 'youtube-music:t1',
 				filePath: '/downloads/t1.m4a',
+				fileName: 'Track t1.m4a',
 				fileSize: 1024,
 				sourcePlugin: 'youtube-music',
 				format: 'm4a',
@@ -304,6 +305,7 @@ describe('DownloadService', () => {
 			useDownloadStore.getState().completeDownload('youtube-music:t1', {
 				trackId: 'youtube-music:t1',
 				filePath: '/downloads/t1.m4a',
+				fileName: 'Track t1.m4a',
 				fileSize: 1024,
 				sourcePlugin: 'youtube-music',
 				format: 'm4a',
@@ -332,6 +334,7 @@ describe('DownloadService', () => {
 			useDownloadStore.getState().completeDownload('youtube-music:t1', {
 				trackId: 'youtube-music:t1',
 				filePath: '/downloads/t1.m4a',
+				fileName: 'Track t1.m4a',
 				fileSize: 1024,
 				sourcePlugin: 'youtube-music',
 				format: 'm4a',
@@ -372,6 +375,7 @@ describe('DownloadService', () => {
 			useDownloadStore.getState().completeDownload('youtube-music:t1', {
 				trackId: 'youtube-music:t1',
 				filePath: '/downloads/t1.m4a',
+				fileName: 'Track t1.m4a',
 				fileSize: 1024,
 				sourcePlugin: 'youtube-music',
 				format: 'm4a',
@@ -409,6 +413,7 @@ describe('DownloadService', () => {
 			useDownloadStore.getState().completeDownload('youtube-music:t1', {
 				trackId: 'youtube-music:t1',
 				filePath: '/downloads/t1.m4a',
+				fileName: 'Track t1.m4a',
 				fileSize: 1024,
 				sourcePlugin: 'youtube-music',
 				format: 'm4a',
@@ -438,6 +443,7 @@ describe('DownloadService', () => {
 			useDownloadStore.getState().completeDownload('youtube-music:t1', {
 				trackId: 'youtube-music:t1',
 				filePath: '/downloads/t1.m4a',
+				fileName: 'Track t1.m4a',
 				fileSize: 1024,
 				sourcePlugin: 'youtube-music',
 				format: 'm4a',
@@ -461,6 +467,7 @@ describe('DownloadService', () => {
 			useDownloadStore.getState().completeDownload('youtube-music:t1', {
 				trackId: 'youtube-music:t1',
 				filePath: '/downloads/t1.m4a',
+				fileName: 'Track t1.m4a',
 				fileSize: 1024,
 				sourcePlugin: 'youtube-music',
 				format: 'm4a',

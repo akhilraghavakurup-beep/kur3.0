@@ -25,15 +25,33 @@ function getSafeTrackId(trackId: string): string {
 	return trackId.replace(/[^a-zA-Z0-9_-]/g, '_');
 }
 
+function getSafeFileName(name: string): string {
+	const trimmed = name.trim();
+	const sanitized = trimmed
+		.replace(/[<>:"/\\|?*\u0000-\u001F]/g, '')
+		.replace(/\s+/g, ' ')
+		.replace(/\.+$/g, '');
+
+	return sanitized || 'Audio';
+}
+
+function getDownloadTrackDirectory(trackId: string): string {
+	return FileSystem.documentDirectory + DOWNLOADS_DIR + `${getSafeTrackId(trackId)}/`;
+}
+
 export async function getDownloadsDirectory(): Promise<string> {
 	const dir = FileSystem.documentDirectory + DOWNLOADS_DIR;
 	await FileSystem.makeDirectoryAsync(dir, { intermediates: true }).catch(() => {});
 	return dir;
 }
 
-export function getDownloadFilePath(trackId: string, format: string = 'm4a'): string {
-	const safeTrackId = getSafeTrackId(trackId);
-	return FileSystem.documentDirectory + DOWNLOADS_DIR + `${safeTrackId}.${format}`;
+export function getDownloadFilePath(
+	trackId: string,
+	displayName: string,
+	format: string = 'm4a'
+): string {
+	const trackDir = getDownloadTrackDirectory(trackId);
+	return trackDir + `${getSafeFileName(displayName)}.${format}`;
 }
 
 export type DownloadProgressCallback = (progress: number) => void;
@@ -41,6 +59,23 @@ export type DownloadProgressCallback = (progress: number) => void;
 export interface DownloadResult {
 	filePath: string;
 	fileSize: number;
+}
+
+export interface InternalDownloadMetadataPayload {
+	readonly trackId: string;
+	readonly fileName: string;
+	readonly title: string;
+	readonly artistName: string;
+	readonly albumName?: string;
+	readonly albumId?: string;
+	readonly sourcePlugin: string;
+	readonly format: string;
+	readonly artworkUrl?: string;
+}
+
+export interface InternalDownloadMetadataResult {
+	readonly metadataFilePath: string;
+	readonly artworkFilePath?: string;
 }
 
 export interface ExternalDownloadConfig {
@@ -52,6 +87,19 @@ export interface ExternalDownloadConfig {
 export interface ExternalDownloadResult {
 	readonly filePath: string;
 	readonly directoryName: string;
+}
+
+function getParentDirectory(filePath: string): string {
+	const normalized = filePath.replace(/\\/g, '/');
+	const slashIndex = normalized.lastIndexOf('/');
+	return slashIndex === -1 ? normalized : normalized.slice(0, slashIndex + 1);
+}
+
+function getArtworkExtension(artworkUrl: string): string {
+	const lower = artworkUrl.toLowerCase();
+	if (lower.includes('.png')) return 'png';
+	if (lower.includes('.webp')) return 'webp';
+	return 'jpg';
 }
 
 async function resolveExternalDirectory(
@@ -89,14 +137,17 @@ async function deleteExistingExternalFile(directoryUri: string, fileName: string
 export async function downloadAudioFile(
 	url: string,
 	trackId: string,
+	displayName: string,
 	onProgress?: DownloadProgressCallback,
 	headers?: Record<string, string>,
 	format: string = 'm4a'
 ): Promise<Result<DownloadResult, Error>> {
 	try {
 		await getDownloadsDirectory();
+		const trackDir = getDownloadTrackDirectory(trackId);
+		await FileSystem.makeDirectoryAsync(trackDir, { intermediates: true }).catch(() => {});
 
-		const filePath = getDownloadFilePath(trackId, format);
+		const filePath = getDownloadFilePath(trackId, displayName, format);
 		logger.debug(`Downloading to: ${filePath}`);
 		logger.debug(`Using headers:`, JSON.stringify(headers ?? 'none'));
 
@@ -175,11 +226,14 @@ export async function downloadAudioFile(
 export async function copyToDownloads(
 	sourcePath: string,
 	trackId: string,
+	displayName: string,
 	format: string = 'm4a'
 ): Promise<Result<DownloadResult, Error>> {
 	try {
 		await getDownloadsDirectory();
-		const destPath = getDownloadFilePath(trackId, format);
+		const trackDir = getDownloadTrackDirectory(trackId);
+		await FileSystem.makeDirectoryAsync(trackDir, { intermediates: true }).catch(() => {});
+		const destPath = getDownloadFilePath(trackId, displayName, format);
 
 		const normalizedSource = sourcePath.startsWith('file://')
 			? sourcePath
@@ -209,12 +263,13 @@ export async function copyToDownloads(
 
 export async function copyDirectoryToDownloads(
 	sourceDir: string,
-	trackId: string
+	trackId: string,
+	displayName: string
 ): Promise<Result<DownloadResult, Error>> {
 	try {
 		await getDownloadsDirectory();
-		const safeTrackId = getSafeTrackId(trackId);
-		const destDir = FileSystem.documentDirectory + DOWNLOADS_DIR + `${safeTrackId}_hls/`;
+		const trackDir = getDownloadTrackDirectory(trackId);
+		const destDir = trackDir + `${getSafeFileName(displayName)}_hls/`;
 
 		await FileSystem.makeDirectoryAsync(destDir, { intermediates: true }).catch(() => {});
 		await FileSystem.copyAsync({ from: sourceDir, to: destDir });
@@ -250,6 +305,7 @@ export async function copyDirectoryToDownloads(
 export async function exportAudioToExternalDirectory(
 	sourcePath: string,
 	trackId: string,
+	displayName: string,
 	format: string,
 	config: ExternalDownloadConfig
 ): Promise<Result<ExternalDownloadResult, Error>> {
@@ -259,13 +315,14 @@ export async function exportAudioToExternalDirectory(
 			return resolvedDirectory;
 		}
 
-		const fileName = `${getSafeTrackId(trackId)}.${format}`;
+		const baseFileName = getSafeFileName(displayName || getSafeTrackId(trackId));
+		const fileName = `${baseFileName}.${format}`;
 		await deleteExistingExternalFile(resolvedDirectory.data.uri, fileName);
 
 		const sourceUri = sourcePath.startsWith('file://') ? sourcePath : `file://${sourcePath}`;
 		const targetUri = await StorageAccessFramework.createFileAsync(
 			resolvedDirectory.data.uri,
-			getSafeTrackId(trackId),
+			baseFileName,
 			MIME_TYPES[format] ?? 'audio/*'
 		);
 		const base64 = await FileSystem.readAsStringAsync(sourceUri, {
@@ -294,6 +351,75 @@ export async function exportAudioToExternalDirectory(
 	}
 }
 
+export async function writeInternalDownloadMetadata(
+	filePath: string,
+	metadata: InternalDownloadMetadataPayload
+): Promise<Result<InternalDownloadMetadataResult, Error>> {
+	try {
+		const directory = getParentDirectory(filePath);
+		const metadataFilePath = `${directory}metadata.json`;
+
+		let artworkFilePath: string | undefined;
+		if (metadata.artworkUrl) {
+			const extension = getArtworkExtension(metadata.artworkUrl);
+			const targetArtworkPath = `${directory}cover.${extension}`;
+			const artworkDownload = await FileSystem.downloadAsync(
+				metadata.artworkUrl,
+				targetArtworkPath,
+				{
+					headers: {
+						Accept: 'image/*',
+						'User-Agent': 'Kur Music/0.0.1',
+					},
+				}
+			).catch(() => null);
+
+			if (artworkDownload?.status === 200) {
+				artworkFilePath = targetArtworkPath;
+			}
+		}
+
+		await FileSystem.writeAsStringAsync(
+			metadataFilePath,
+			JSON.stringify(
+				{
+					trackId: metadata.trackId,
+					fileName: metadata.fileName,
+					title: metadata.title,
+					artist: metadata.artistName,
+					album: metadata.albumName,
+					albumId: metadata.albumId,
+					sourcePlugin: metadata.sourcePlugin,
+					format: metadata.format,
+					artworkUrl: metadata.artworkUrl,
+					artworkFilePath,
+					writtenAt: Date.now(),
+				},
+				null,
+				2
+			),
+			{
+				encoding: FileSystem.EncodingType.UTF8,
+			}
+		);
+
+		return ok({
+			metadataFilePath,
+			artworkFilePath,
+		});
+	} catch (error) {
+		logger.error(
+			'Write internal download metadata error',
+			error instanceof Error ? error : undefined
+		);
+		return err(
+			error instanceof Error
+				? error
+				: new Error(`Failed to write internal metadata: ${String(error)}`)
+		);
+	}
+}
+
 export async function deleteDownloadDirectory(manifestPath: string): Promise<Result<void, Error>> {
 	try {
 		const dir = manifestPath.substring(0, manifestPath.lastIndexOf('/') + 1);
@@ -316,6 +442,25 @@ export async function deleteAudioFile(filePath: string): Promise<Result<void, Er
 	} catch (error) {
 		logger.error('Delete error', error instanceof Error ? error : undefined);
 		return err(error instanceof Error ? error : new Error(`Delete failed: ${String(error)}`));
+	}
+}
+
+export async function deleteInternalDownloadBundle(filePath: string): Promise<Result<void, Error>> {
+	try {
+		const directory = getParentDirectory(filePath);
+		await FileSystem.deleteAsync(directory, { idempotent: true });
+		logger.debug(`Deleted internal download bundle: ${directory}`);
+		return ok(undefined);
+	} catch (error) {
+		logger.error(
+			'Delete internal bundle error',
+			error instanceof Error ? error : undefined
+		);
+		return err(
+			error instanceof Error
+				? error
+				: new Error(`Delete internal bundle failed: ${String(error)}`)
+		);
 	}
 }
 

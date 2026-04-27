@@ -255,6 +255,7 @@ describe('download-state', () => {
 			const result = createDownloadedTrackMetadata({
 				trackId: 'youtube-music:abc',
 				filePath: '/downloads/song.mp3',
+				fileName: 'Song.mp3',
 				fileSize: 5_000_000,
 				sourcePlugin: 'youtube-music',
 				format: 'mp3',
@@ -264,6 +265,7 @@ describe('download-state', () => {
 
 			expect(result.trackId).toBe('youtube-music:abc');
 			expect(result.filePath).toBe('/downloads/song.mp3');
+			expect(result.fileName).toBe('Song.mp3');
 			expect(result.fileSize).toBe(5_000_000);
 			expect(result.sourcePlugin).toBe('youtube-music');
 			expect(result.format).toBe('mp3');
@@ -275,6 +277,7 @@ describe('download-state', () => {
 			const result = createDownloadedTrackMetadata({
 				trackId: 'track-1',
 				filePath: '/path/to/file.mp3',
+				fileName: 'Song.mp3',
 				fileSize: 1_000_000,
 				sourcePlugin: 'youtube-music',
 				format: 'mp3',
@@ -289,6 +292,7 @@ describe('download-state', () => {
 			const result = createDownloadedTrackMetadata({
 				trackId: 'track-1',
 				filePath: '/path/to/file.mp3',
+				fileName: 'Song.mp3',
 				externalFilePath: 'content://downloads/song.mp3',
 				externalDirectoryName: 'Music',
 				fileSize: 1_000_000,
@@ -312,6 +316,7 @@ describe('download-state', () => {
 			const result = createDownloadedTrackMetadata({
 				trackId: 'track-1',
 				filePath: '/path/to/file.mp3',
+				fileName: 'Song.mp3',
 				fileSize: 1_000_000,
 				sourcePlugin: 'youtube-music',
 				format: 'mp3',

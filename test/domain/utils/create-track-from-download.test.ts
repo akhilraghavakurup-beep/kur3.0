@@ -23,6 +23,7 @@ function makeDownloadedMetadata(
 	return {
 		trackId: 'youtube-music:abc123',
 		filePath: '/downloads/song.mp3',
+		fileName: 'Test Song.mp3',
 		fileSize: 5_000_000,
 		downloadedAt: Date.now(),
 		sourcePlugin: 'youtube-music',

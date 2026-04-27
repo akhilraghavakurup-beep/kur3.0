@@ -74,6 +74,7 @@ function createDownloadedMetadata(def: MockDownloadDefinition): DownloadedTrackM
 	return {
 		trackId,
 		filePath: `/data/downloads/${trackId}.m4a`,
+		fileName: `${track.title}.m4a`,
 		fileSize: def.fileSize ?? 5_000_000,
 		downloadedAt: Date.now() - Math.floor(Math.random() * 7) * 24 * 60 * 60 * 1000,
 		sourcePlugin: 'youtube-music',

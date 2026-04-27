@@ -17,8 +17,10 @@ import {
 	copyDirectoryToDownloads,
 	deleteAudioFile,
 	deleteDownloadDirectory,
+	deleteInternalDownloadBundle,
 	exportAudioToExternalDirectory,
 	getFileInfo,
+	writeInternalDownloadMetadata,
 } from '../../infrastructure/filesystem/download-manager';
 import type {
 	DownloadResult,
@@ -35,6 +37,11 @@ const logger = getLogger('DownloadService');
 const NON_DOWNLOADABLE_FORMATS = new Set(['hls']);
 
 const BATCH_CONCURRENCY = 3;
+
+function getFileNameFromPath(filePath: string): string {
+	const normalized = filePath.replace(/\\/g, '/');
+	return normalized.split('/').pop() ?? filePath;
+}
 
 interface AudioStreamInfo {
 	readonly url: string;
@@ -123,7 +130,7 @@ export class DownloadService {
 		const deleteResult =
 			metadata.format === 'm3u8'
 				? await deleteDownloadDirectory(metadata.filePath)
-				: await deleteAudioFile(metadata.filePath);
+				: await deleteInternalDownloadBundle(metadata.filePath);
 
 		if (metadata.externalFilePath) {
 			const externalDeleteResult = await deleteAudioFile(metadata.externalFilePath);
@@ -223,13 +230,14 @@ export class DownloadService {
 				return this._failDownload(trackId, streamResult.error);
 			}
 
-			const fileResult = await this._acquireFile(trackId, streamResult.data, store);
+			const fileResult = await this._acquireFile(track, streamResult.data, store);
 			if (!fileResult.success) {
 				return this._failDownload(trackId, fileResult.error);
 			}
 
 			const exportResult = await this._exportForExternalAccess(
 				trackId,
+				track.title,
 				fileResult.data.filePath,
 				streamResult.data.format ?? 'm4a'
 			);
@@ -238,7 +246,7 @@ export class DownloadService {
 			}
 
 			const artwork = getLargestArtwork(track.artwork);
-			this._completeDownload(
+			await this._completeDownload(
 				track,
 				fileResult.data,
 				streamResult.data.format ?? 'm4a',
@@ -299,19 +307,22 @@ export class DownloadService {
 		return err(error);
 	}
 
-	private _completeDownload(
+	private async _completeDownload(
 		track: Track,
 		file: DownloadResult,
 		format: string,
 		artwork: ReturnType<typeof getLargestArtwork>,
 		externalFile?: ExternalDownloadResult
-	): void {
+	): Promise<void> {
 		const trackId = track.id.value;
 		const store = useDownloadStore.getState();
 
 		const metadata = createDownloadedTrackMetadata({
 			trackId,
 			filePath: file.filePath,
+			fileName: getFileNameFromPath(file.filePath),
+			metadataFilePath: undefined,
+			artworkFilePath: undefined,
 			externalFilePath: externalFile?.filePath,
 			externalDirectoryName: externalFile?.directoryName,
 			fileSize: file.fileSize,
@@ -324,7 +335,26 @@ export class DownloadService {
 			albumName: track.album?.name,
 		});
 
-		store.completeDownload(trackId, metadata);
+		const internalMetadataResult = await writeInternalDownloadMetadata(file.filePath, {
+			trackId,
+			fileName: metadata.fileName,
+			title: track.title,
+			artistName: getArtistNames(track),
+			albumName: track.album?.name,
+			albumId: track.album?.id,
+			sourcePlugin: track.id.sourceType,
+			format,
+			artworkUrl: artwork?.url,
+		});
+		const finalizedMetadata = internalMetadataResult.success
+			? {
+					...metadata,
+					metadataFilePath: internalMetadataResult.data.metadataFilePath,
+					artworkFilePath: internalMetadataResult.data.artworkFilePath,
+				}
+			: metadata;
+
+		store.completeDownload(trackId, finalizedMetadata);
 		this.activeDownloads.delete(trackId);
 
 		if (!libraryService.isInLibrary(trackId)) {
@@ -340,24 +370,25 @@ export class DownloadService {
 	}
 
 	private async _acquireFile(
-		trackId: string,
+		track: Track,
 		stream: AudioStreamInfo,
 		store: ReturnType<typeof useDownloadStore.getState>
 	): Promise<Result<DownloadResult, Error>> {
+		const trackId = track.id.value;
 		const format = stream.format ?? 'm4a';
 
 		if (isLocalPath(stream.url)) {
 			if (format === 'm3u8') {
 				// m3u8 manifest lives inside a segment directory — copy the whole directory
 				const sourceDir = stream.url.substring(0, stream.url.lastIndexOf('/') + 1);
-				const result = await copyDirectoryToDownloads(sourceDir, trackId);
+				const result = await copyDirectoryToDownloads(sourceDir, trackId, track.title);
 				if (result.success) {
 					store.updateProgress(trackId, 100);
 				}
 				return result;
 			}
 
-			const result = await copyToDownloads(stream.url, trackId, format);
+			const result = await copyToDownloads(stream.url, trackId, track.title, format);
 			if (result.success) {
 				store.updateProgress(trackId, 100);
 			}
@@ -367,6 +398,7 @@ export class DownloadService {
 		return downloadAudioFile(
 			stream.url,
 			trackId,
+			track.title,
 			(progress) => store.updateProgress(trackId, progress),
 			stream.headers,
 			format
@@ -404,12 +436,13 @@ export class DownloadService {
 
 	private async _exportForExternalAccess(
 		trackId: string,
+		displayName: string,
 		filePath: string,
 		format: string
 	): Promise<Result<ExternalDownloadResult, Error>> {
 		const settings = useSettingsStore.getState();
 
-		return exportAudioToExternalDirectory(filePath, trackId, format, {
+		return exportAudioToExternalDirectory(filePath, trackId, displayName, format, {
 			mode: settings.downloadLocationMode,
 			customDirectoryUri: settings.customDownloadDirectoryUri,
 			customDirectoryName: settings.customDownloadDirectoryName,

@@ -19,6 +19,18 @@ if (typeof global !== 'undefined') {
 
 let musicMetadata: typeof import('music-metadata') | null = null;
 
+interface DownloadSidecarMetadata {
+	readonly title?: string;
+	readonly artist?: string;
+	readonly album?: string;
+	readonly albumArtist?: string;
+	readonly year?: number;
+	readonly genre?: string;
+	readonly trackNumber?: number;
+	readonly discNumber?: number;
+	readonly artworkFilePath?: string;
+}
+
 async function _getMusicMetadata(): Promise<typeof import('music-metadata')> {
 	if (!musicMetadata) {
 		logger.debug('Loading music-metadata library...');
@@ -68,17 +80,22 @@ async function _parseWithNativeModule(
 			}
 		}
 
+		const sidecar = await _readDownloadSidecar(fileUri);
+		if (!artwork && sidecar.artwork) {
+			artwork = sidecar.artwork;
+		}
+
 		logger.debug(`Native parse complete: ${fileName}`);
 
 		return ok({
-			title: metadata.title,
-			artist: metadata.artist,
-			album: metadata.album,
-			albumArtist: metadata.albumArtist,
-			year: metadata.year,
-			genre: metadata.genre,
-			trackNumber: metadata.trackNumber,
-			discNumber: metadata.discNumber,
+			title: metadata.title ?? sidecar.metadata.title,
+			artist: metadata.artist ?? sidecar.metadata.artist,
+			album: metadata.album ?? sidecar.metadata.album,
+			albumArtist: metadata.albumArtist ?? sidecar.metadata.albumArtist,
+			year: metadata.year ?? sidecar.metadata.year,
+			genre: metadata.genre ?? sidecar.metadata.genre,
+			trackNumber: metadata.trackNumber ?? sidecar.metadata.trackNumber,
+			discNumber: metadata.discNumber ?? sidecar.metadata.discNumber,
 			duration: metadata.duration,
 			bitrate: metadata.bitrate,
 			sampleRate: metadata.sampleRate,
@@ -138,15 +155,20 @@ async function _parseWithJsModule(
 			};
 		}
 
+		const sidecar = await _readDownloadSidecar(fileUri);
+		if (!artwork && sidecar.artwork) {
+			artwork = sidecar.artwork;
+		}
+
 		return ok({
-			title: common.title,
-			artist: common.artist || common.artists?.join(', '),
-			album: common.album,
-			albumArtist: common.albumartist,
-			year: common.year,
-			genre: common.genre?.join(', '),
-			trackNumber: common.track?.no ?? undefined,
-			discNumber: common.disk?.no ?? undefined,
+			title: common.title ?? sidecar.metadata.title,
+			artist: common.artist || common.artists?.join(', ') || sidecar.metadata.artist,
+			album: common.album ?? sidecar.metadata.album,
+			albumArtist: common.albumartist ?? sidecar.metadata.albumArtist,
+			year: common.year ?? sidecar.metadata.year,
+			genre: common.genre?.join(', ') ?? sidecar.metadata.genre,
+			trackNumber: common.track?.no ?? sidecar.metadata.trackNumber,
+			discNumber: common.disk?.no ?? sidecar.metadata.discNumber,
 			duration: format.duration ?? 0,
 			bitrate: format.bitrate ? Math.round(format.bitrate / 1000) : undefined,
 			sampleRate: format.sampleRate,
@@ -159,6 +181,60 @@ async function _parseWithJsModule(
 		return err(
 			error instanceof Error ? error : new Error(`Failed to parse metadata: ${String(error)}`)
 		);
+	}
+}
+
+async function _readDownloadSidecar(
+	fileUri: string
+): Promise<{ metadata: Partial<ParsedMetadata>; artwork?: EmbeddedArtwork }> {
+	try {
+		const normalized = fileUri.startsWith('file://') ? fileUri.replace('file://', '') : fileUri;
+		const slashIndex = normalized.lastIndexOf('/');
+		if (slashIndex === -1) {
+			return { metadata: {} };
+		}
+
+		const directory = normalized.slice(0, slashIndex + 1);
+		const metadataPath = `${directory}metadata.json`;
+		const info = await FileSystem.getInfoAsync(metadataPath);
+		if (!info.exists) {
+			return { metadata: {} };
+		}
+
+		const raw = await FileSystem.readAsStringAsync(metadataPath, {
+			encoding: FileSystem.EncodingType.UTF8,
+		});
+		const parsed = JSON.parse(raw) as DownloadSidecarMetadata;
+
+		let artwork: EmbeddedArtwork | undefined;
+		if (parsed.artworkFilePath) {
+			const artworkInfo = await FileSystem.getInfoAsync(parsed.artworkFilePath);
+			if (artworkInfo.exists) {
+				const artworkBase64 = await FileSystem.readAsStringAsync(parsed.artworkFilePath, {
+					encoding: FileSystem.EncodingType.Base64,
+				});
+				artwork = {
+					data: Buffer.from(artworkBase64, 'base64'),
+					mimeType: _getArtworkMimeType(parsed.artworkFilePath),
+				};
+			}
+		}
+
+		return {
+			metadata: {
+				title: parsed.title,
+				artist: parsed.artist,
+				album: parsed.album,
+				albumArtist: parsed.albumArtist,
+				year: parsed.year,
+				genre: parsed.genre,
+				trackNumber: parsed.trackNumber,
+				discNumber: parsed.discNumber,
+			},
+			artwork,
+		};
+	} catch {
+		return { metadata: {} };
 	}
 }
 
@@ -226,6 +302,14 @@ function _getMimeTypeFromUri(uri: string): string {
 	};
 
 	return mimeMap[ext || ''] || 'audio/mpeg';
+}
+
+function _getArtworkMimeType(uri: string): string {
+	const lower = uri.toLowerCase();
+	if (lower.endsWith('.png')) return 'image/png';
+	if (lower.endsWith('.webp')) return 'image/webp';
+	if (lower.endsWith('.gif')) return 'image/gif';
+	return 'image/jpeg';
 }
 
 export async function extractDuration(fileUri: string): AsyncResult<number, Error> {

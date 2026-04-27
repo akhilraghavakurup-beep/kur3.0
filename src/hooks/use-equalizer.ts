@@ -1,4 +1,5 @@
 import { useCallback, useEffect } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import {
 	useEqualizerStore,
 	DEFAULT_PRESETS,
@@ -7,47 +8,69 @@ import {
 } from '@/src/application/state/equalizer-store';
 
 export function useEqualizer() {
-	const store = useEqualizerStore();
+	const {
+		isEnabled,
+		selectedPresetId,
+		customGains,
+		isNativeAvailable,
+		selectPreset: selectPresetAction,
+		setCustomGain: setCustomGainAction,
+		toggleEnabled: toggleEnabledAction,
+		resetToFlat: resetToFlatAction,
+		initializeNative,
+	} = useEqualizerStore(
+		useShallow((state) => ({
+			isEnabled: state.isEnabled,
+			selectedPresetId: state.selectedPresetId,
+			customGains: state.customGains,
+			isNativeAvailable: state.isNativeAvailable,
+			selectPreset: state.selectPreset,
+			setCustomGain: state.setCustomGain,
+			toggleEnabled: state.toggleEnabled,
+			resetToFlat: state.resetToFlat,
+			initializeNative: state.initializeNative,
+		}))
+	);
 
 	const selectPreset = useCallback(
 		(presetId: string) => {
-			store.selectPreset(presetId);
+			selectPresetAction(presetId);
 		},
-		[store]
+		[selectPresetAction]
 	);
 
 	const setGain = useCallback(
 		(bandIndex: number, gain: number) => {
-			store.setCustomGain(bandIndex, gain);
+			setCustomGainAction(bandIndex, gain);
 		},
-		[store]
+		[setCustomGainAction]
 	);
 
 	const toggleEnabled = useCallback(() => {
-		store.toggleEnabled();
-	}, [store]);
+		toggleEnabledAction();
+	}, [toggleEnabledAction]);
 
 	const resetToFlat = useCallback(() => {
-		store.resetToFlat();
-	}, [store]);
+		resetToFlatAction();
+	}, [resetToFlatAction]);
 
 	const currentPreset =
-		DEFAULT_PRESETS.find((p) => p.id === store.selectedPresetId) ?? DEFAULT_PRESETS[0];
+		DEFAULT_PRESETS.find((p) => p.id === selectedPresetId) ?? DEFAULT_PRESETS[0];
 
 	return {
-		isEnabled: store.isEnabled,
-		selectedPresetId: store.selectedPresetId,
+		isEnabled,
+		selectedPresetId,
 		currentPreset,
-		currentGains: store.customGains,
+		currentGains: customGains,
 		presets: DEFAULT_PRESETS,
 		bands: EQUALIZER_BANDS,
-		isNativeAvailable: store.isNativeAvailable,
+		isNativeAvailable,
 
 		selectPreset,
 		setGain,
 		toggleEnabled,
 		resetToFlat,
-		initializeNative: store.initializeNative,
+		initializeNative,
 	};
 }
 
