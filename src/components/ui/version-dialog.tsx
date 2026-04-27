@@ -4,7 +4,7 @@
  * Material 3 styled dialog displaying app version information.
  */
 
-import { StyleSheet, View, Platform } from 'react-native';
+import { StyleSheet, View, Platform, Image } from 'react-native';
 import { Dialog, Portal, Text, Button, Divider } from 'react-native-paper';
 import Constants from 'expo-constants';
 import { useAppTheme, M3Shapes } from '@/lib/theme';
@@ -71,7 +71,11 @@ export function VersionDialog({ visible, onDismiss }: VersionDialogProps) {
 								{ backgroundColor: colors.primaryContainer },
 							]}
 						>
-							<Icon as={PackageIcon} size={32} color={colors.onPrimaryContainer} />
+							<Image
+								source={require('../../../assets/images/icon.png')}
+								style={styles.logo}
+								resizeMode={'contain'}
+							/>
 						</View>
 						<View style={styles.headerText}>
 							<Text variant={'headlineSmall'} style={{ color: colors.onSurface }}>kurmusic</Text>
@@ -137,6 +141,11 @@ const styles = StyleSheet.create({
 		borderRadius: 16,
 		alignItems: 'center',
 		justifyContent: 'center',
+		overflow: 'hidden',
+	},
+	logo: {
+		width: 56,
+		height: 56,
 	},
 	headerText: {
 		flex: 1,

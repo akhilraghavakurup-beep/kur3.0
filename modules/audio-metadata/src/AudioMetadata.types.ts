@@ -17,3 +17,15 @@ export interface ExtractedArtwork {
 	base64: string;
 	mimeType: string;
 }
+
+export interface WritableAudioMetadata {
+	title?: string;
+	artist?: string;
+	album?: string;
+	albumArtist?: string;
+	year?: number;
+	genre?: string;
+	trackNumber?: number;
+	discNumber?: number;
+	artworkFileUri?: string;
+}
