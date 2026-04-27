@@ -1,6 +1,9 @@
 import React, { Component, type ReactNode, useEffect } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { PlayerAwareScrollView } from '@/src/components/ui/player-aware-scroll-view';
+import { permissionService } from '@/src/application/services/permission-service';
+import { recordCrashLog } from '@/src/shared/services/crash-log';
+import { exportCrashLogToFolder } from '@/src/shared/services/crash-log';
 
 const ERROR_TAG = '[ErrorCapture]';
 
@@ -22,6 +25,9 @@ interface ErrorBoundaryState {
 	hasError: boolean;
 	error: Error | null;
 	errorInfo: ErrorInfo | null;
+	exportingLog: boolean;
+	exportError: string | null;
+	exportSuccess: string | null;
 }
 
 interface ErrorBoundaryProps {
@@ -32,7 +38,14 @@ interface ErrorBoundaryProps {
 export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
 	constructor(props: ErrorBoundaryProps) {
 		super(props);
-		this.state = { hasError: false, error: null, errorInfo: null };
+		this.state = {
+			hasError: false,
+			error: null,
+			errorInfo: null,
+			exportingLog: false,
+			exportError: null,
+			exportSuccess: null,
+		};
 	}
 
 	static getDerivedStateFromError(error: Error): Partial<ErrorBoundaryState> {
@@ -44,12 +57,58 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 		console.error(ERROR_TAG, 'Error:', error.message);
 		console.error(ERROR_TAG, 'Stack:', error.stack);
 		console.error(ERROR_TAG, 'Component Stack:', errorInfo.componentStack);
+		void recordCrashLog('React Error Boundary caught error', {
+			message: error.message,
+			stack: error.stack ?? '',
+			componentStack: errorInfo.componentStack,
+		});
 
 		this.setState({ errorInfo });
 	}
 
 	_handleReset = (): void => {
-		this.setState({ hasError: false, error: null, errorInfo: null });
+		this.setState({
+			hasError: false,
+			error: null,
+			errorInfo: null,
+			exportingLog: false,
+			exportError: null,
+			exportSuccess: null,
+		});
+	};
+
+	_handleExportLog = async (): Promise<void> => {
+		this.setState({ exportingLog: true, exportError: null, exportSuccess: null });
+
+		try {
+			const directoryResult = await permissionService.requestDirectoryPermission();
+			if (!directoryResult.success) {
+				this.setState({
+					exportingLog: false,
+					exportError: directoryResult.error.message,
+				});
+				return;
+			}
+
+			const exportResult = await exportCrashLogToFolder(directoryResult.data.uri);
+			if (!exportResult.success) {
+				this.setState({
+					exportingLog: false,
+					exportError: exportResult.error.message,
+				});
+				return;
+			}
+
+			this.setState({
+				exportingLog: false,
+				exportSuccess: 'Crash log exported successfully.',
+			});
+		} catch (error) {
+			this.setState({
+				exportingLog: false,
+				exportError: error instanceof Error ? error.message : String(error),
+			});
+		}
 	};
 
 	render(): ReactNode {
@@ -62,10 +121,23 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 				<View style={styles.container}>
 					<View style={styles.header}>
 						<Text style={styles.title}>Something went wrong</Text>
-						<Pressable onPress={this._handleReset} style={styles.resetButton}>
-							<Text style={styles.resetButtonText}>Try Again</Text>
-						</Pressable>
+						<View style={styles.headerActions}>
+							<Pressable onPress={this._handleExportLog} style={styles.secondaryButton}>
+								<Text style={styles.resetButtonText}>
+									{this.state.exportingLog ? 'Exporting...' : 'Export Log'}
+								</Text>
+							</Pressable>
+							<Pressable onPress={this._handleReset} style={styles.resetButton}>
+								<Text style={styles.resetButtonText}>Try Again</Text>
+							</Pressable>
+						</View>
 					</View>
+					{this.state.exportSuccess && (
+						<Text style={styles.successMessage}>{this.state.exportSuccess}</Text>
+					)}
+					{this.state.exportError && (
+						<Text style={styles.errorMessage}>{this.state.exportError}</Text>
+					)}
 					<PlayerAwareScrollView style={styles.scrollView}>
 						<Text style={styles.errorName}>{this.state.error?.name}</Text>
 						<Text style={styles.errorMessage}>{this.state.error?.message}</Text>
@@ -108,6 +180,11 @@ export function useGlobalErrorHandlers(): void {
 			console.error(ERROR_TAG, 'Error:', error.message);
 			console.error(ERROR_TAG, 'Stack:', error.stack);
 			console.error(ERROR_TAG, '==========================');
+			void recordCrashLog('Unhandled JS error', {
+				fatal: String(Boolean(isFatal)),
+				message: error.message,
+				stack: error.stack ?? '',
+			});
 
 			if (originalHandler) {
 				originalHandler(error, isFatal);
@@ -132,8 +209,15 @@ export function withErrorLogging<T extends unknown[], R>(
 			if (error instanceof Error) {
 				console.error(ERROR_TAG, 'Message:', error.message);
 				console.error(ERROR_TAG, 'Stack:', error.stack);
+				void recordCrashLog(`Error in ${context}`, {
+					message: error.message,
+					stack: error.stack ?? '',
+				});
 			} else {
 				console.error(ERROR_TAG, 'Error:', error);
+				void recordCrashLog(`Error in ${context}`, {
+					error: String(error),
+				});
 			}
 			throw error;
 		}
@@ -153,10 +237,20 @@ const styles = StyleSheet.create({
 		alignItems: 'center',
 		marginBottom: 16,
 	},
+	headerActions: {
+		flexDirection: 'row',
+		gap: 8,
+	},
 	title: {
 		fontSize: 20,
 		fontWeight: 'bold',
 		color: '#ff6b6b',
+	},
+	secondaryButton: {
+		backgroundColor: '#444',
+		paddingHorizontal: 16,
+		paddingVertical: 8,
+		borderRadius: 8,
 	},
 	resetButton: {
 		backgroundColor: '#333',
@@ -183,6 +277,11 @@ const styles = StyleSheet.create({
 		fontSize: 14,
 		color: '#fff',
 		marginBottom: 16,
+	},
+	successMessage: {
+		fontSize: 14,
+		color: '#8ef0a0',
+		marginBottom: 8,
 	},
 	sectionTitle: {
 		fontSize: 14,

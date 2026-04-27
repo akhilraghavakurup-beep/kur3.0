@@ -1,4 +1,4 @@
-import { Platform, StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { useCallback, useMemo, useState } from 'react';
 import { router } from 'expo-router';
 import { useShallow } from 'zustand/react/shallow';
@@ -17,9 +17,9 @@ import { Switch } from 'react-native-paper';
 import {
 	TrashIcon,
 	InfoIcon,
+	FileTextIcon,
 	PlugIcon,
 	HardDriveIcon,
-	FolderOpenIcon,
 	SunMoonIcon,
 	LayoutGridIcon,
 	SlidersHorizontalIcon,
@@ -45,7 +45,12 @@ import { useEqualizer } from '@/src/hooks/use-equalizer';
 import { useClearDownloads } from '@/src/hooks/use-clear-downloads';
 import { useFactoryReset } from '@/src/hooks/use-factory-reset';
 import { useToast } from '@/src/hooks/use-toast';
+import Constants from 'expo-constants';
 import { permissionService } from '@/src/application/services/permission-service';
+import {
+	exportCrashLogToFolder,
+	getCrashLogPath,
+} from '@/src/shared/services/crash-log';
 
 export default function SettingsScreen() {
 	const { tracks, playlists, favorites } = useLibraryStore(
@@ -74,10 +79,6 @@ export default function SettingsScreen() {
 		setPreferredStreamQuality,
 		autoplaySimilarOnQueueEnd,
 		setAutoplaySimilarOnQueueEnd,
-		downloadLocationMode,
-		customDownloadDirectoryName,
-		setCustomDownloadDirectory,
-		resetDownloadLocation,
 	} = useSettingsStore(
 		useShallow((state) => ({
 			themePreference: state.themePreference,
@@ -98,10 +99,6 @@ export default function SettingsScreen() {
 			setPreferredStreamQuality: state.setPreferredStreamQuality,
 			autoplaySimilarOnQueueEnd: state.autoplaySimilarOnQueueEnd,
 			setAutoplaySimilarOnQueueEnd: state.setAutoplaySimilarOnQueueEnd,
-			downloadLocationMode: state.downloadLocationMode,
-			customDownloadDirectoryName: state.customDownloadDirectoryName,
-			setCustomDownloadDirectory: state.setCustomDownloadDirectory,
-			resetDownloadLocation: state.resetDownloadLocation,
 		}))
 	);
 	const { stats } = useDownloadQueue();
@@ -192,12 +189,15 @@ export default function SettingsScreen() {
 		setFactoryResetDialogVisible(true);
 	};
 
-	const handleChangeDownloadLocation = useCallback(async () => {
-		if (Platform.OS !== 'android') {
-			success(
-				'Using app storage',
-				'Custom download folders are currently supported on Android only'
-			);
+	const confirmFactoryReset = async () => {
+		await factoryReset();
+		setFactoryResetDialogVisible(false);
+	};
+
+	const handleExportCrashLog = useCallback(async () => {
+		const crashLogPath = getCrashLogPath();
+		if (!crashLogPath) {
+			success('Crash log unavailable', 'Crash logs cannot be stored on this device');
 			return;
 		}
 
@@ -206,26 +206,15 @@ export default function SettingsScreen() {
 			return;
 		}
 
-		setCustomDownloadDirectory(result.data.uri, result.data.name);
-		success('Download folder updated', `New downloads will also be copied to ${result.data.name}`);
-	}, [setCustomDownloadDirectory, success]);
+		const exportResult = await exportCrashLogToFolder(result.data.uri);
+		if (exportResult.success) {
+			success('Crash log exported', `Saved to ${result.data.name}`);
+		} else {
+			success('Export failed', exportResult.error.message);
+		}
+	}, [success]);
 
-	const handleUseMusicFolder = useCallback(() => {
-		resetDownloadLocation();
-		success('Download folder reset', 'New downloads will use the Music folder by default');
-	}, [resetDownloadLocation, success]);
-
-	const confirmFactoryReset = async () => {
-		await factoryReset();
-		setFactoryResetDialogVisible(false);
-	};
-
-	const downloadLocationSubtitle =
-		downloadLocationMode === 'custom' && customDownloadDirectoryName
-			? `Custom folder: ${customDownloadDirectoryName}`
-			: 'Default: Music folder';
-
-	const appVersion = '3.0';
+	const appVersion = Constants.expoConfig?.version ?? '1.0.0';
 
 	return (
 		<PageLayout
@@ -332,21 +321,6 @@ export default function SettingsScreen() {
 
 				<SettingsSection title={'Storage'}>
 					<SettingsItem
-						icon={FolderOpenIcon}
-						title={'Download location'}
-						subtitle={downloadLocationSubtitle}
-						onPress={handleChangeDownloadLocation}
-						showChevron={Platform.OS === 'android'}
-					/>
-					{downloadLocationMode === 'custom' && (
-						<SettingsItem
-							icon={HardDriveIcon}
-							title={'Use Music folder'}
-							subtitle={'Reset downloads back to the default Music folder'}
-							onPress={handleUseMusicFolder}
-						/>
-					)}
-					<SettingsItem
 						icon={HardDriveIcon}
 						title={'Storage used'}
 						subtitle={`${formatFileSize(stats.totalSize)} · ${stats.completedCount} files`}
@@ -416,9 +390,16 @@ export default function SettingsScreen() {
 						onPress={() => setVersionDialogVisible(true)}
 						showChevron
 					/>
+					<SettingsItem
+						icon={FileTextIcon}
+						title={'Crash log'}
+						subtitle={'Export the latest crash log to a folder you can open in a file manager'}
+						onPress={handleExportCrashLog}
+						showChevron
+					/>
 					<SettingsItem icon={InfoIcon} title={'Developed by'} subtitle={'Kurup'} />
 					<SettingsItem icon={InfoIcon} title={'Tested by'} subtitle={'Nemo'} />
-					<SettingsItem icon={InfoIcon} title={'Build'} subtitle={"AJ's Build"} />
+					<SettingsItem icon={InfoIcon} title={'Build'} subtitle={'smiling pookie'} />
 				</SettingsSection>
 			</PlayerAwareScrollView>
 

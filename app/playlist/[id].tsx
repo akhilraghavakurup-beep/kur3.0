@@ -35,17 +35,69 @@ import { useAppTheme, M3Shapes } from '@/lib/theme';
 import { formatDuration } from '@/src/domain/utils/formatting';
 import { getPlaylistDuration, type PlaylistTrack } from '@/src/domain/entities/playlist';
 import { getBestArtwork } from '@/src/domain/value-objects/artwork';
+import { Duration } from '@/src/domain/value-objects/duration';
+import { TrackId } from '@/src/domain/value-objects/track-id';
 import { getArtistNames, type Track } from '@/src/domain/entities/track';
 import type { DetailsHeaderInfo, MetadataLine } from '@/src/components/details-page';
 import type { ReactNode } from 'react';
 
+function normalizeDuration(value: unknown): Duration {
+	if (value instanceof Duration) {
+		return value;
+	}
+
+	if (typeof value === 'number' && Number.isFinite(value)) {
+		return Duration.fromMilliseconds(value);
+	}
+
+	if (value && typeof value === 'object') {
+		const candidate = value as {
+			totalMilliseconds?: unknown;
+			totalSeconds?: unknown;
+		};
+
+		if (typeof candidate.totalMilliseconds === 'number' && Number.isFinite(candidate.totalMilliseconds)) {
+			return Duration.fromMilliseconds(candidate.totalMilliseconds);
+		}
+
+		if (typeof candidate.totalSeconds === 'number' && Number.isFinite(candidate.totalSeconds)) {
+			return Duration.fromSeconds(candidate.totalSeconds);
+		}
+	}
+
+	return Duration.ZERO;
+}
+
+function normalizeTrack(track: Track): Track {
+	const id =
+		typeof track.id === 'string'
+			? TrackId.tryFromString(track.id) ?? TrackId.create('unknown', track.id)
+			: track.id;
+
+	return {
+		...track,
+		id,
+		duration: normalizeDuration(track.duration),
+		addedAt: track.addedAt ? new Date(track.addedAt) : undefined,
+	};
+}
+
+function normalizePlaylistTracks(tracks: PlaylistTrack[]): PlaylistTrack[] {
+	return tracks.map((entry, index) => ({
+		...entry,
+		track: normalizeTrack(entry.track),
+		addedAt: entry.addedAt ? new Date(entry.addedAt) : new Date(),
+		position: index,
+	}));
+}
+
 export default function PlaylistScreen() {
 	const insets = useSafeAreaInsets();
 	const { id } = useLocalSearchParams<{ id: string }>();
-	const playlistId = Array.isArray(id) ? id[0] : id;
 	const { colors } = useAppTheme();
 	const { playQueue, shufflePlay } = usePlayer();
 	const { success } = useToast();
+	const playlistId = Array.isArray(id) ? id[0] : id ?? '';
 
 	const [menuVisible, setMenuVisible] = useState(false);
 	const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
@@ -74,9 +126,22 @@ export default function PlaylistScreen() {
 		isDownloading,
 	} = useBatchActions();
 
-	const tracks = useMemo(() => playlist?.tracks.map((pt) => pt.track) ?? [], [playlist?.tracks]);
-	const totalDuration = playlist ? getPlaylistDuration(playlist) : 0;
-	const artworkUrl = playlist?.artwork?.[0]?.url ?? tracks[0]?.artwork?.[0]?.url;
+	const normalizedPlaylist = useMemo(
+		() =>
+			playlist
+				? {
+						...playlist,
+						tracks: normalizePlaylistTracks(playlist.tracks),
+					}
+				: null,
+		[playlist]
+	);
+	const tracks = useMemo(
+		() => normalizedPlaylist?.tracks.map((pt) => pt.track) ?? [],
+		[normalizedPlaylist]
+	);
+	const totalDuration = normalizedPlaylist ? getPlaylistDuration(normalizedPlaylist) : 0;
+	const artworkUrl = normalizedPlaylist?.artwork?.[0]?.url ?? tracks[0]?.artwork?.[0]?.url;
 
 	const handlePlayAll = useCallback(() => {
 		if (tracks.length > 0) {
@@ -89,31 +154,31 @@ export default function PlaylistScreen() {
 	}, [tracks, shufflePlay]);
 
 	const handleDeletePlaylist = useCallback(() => {
-		if (playlist) {
-			removePlaylist(playlist.id);
-			success('Playlist deleted', playlist.name);
+		if (normalizedPlaylist) {
+			removePlaylist(normalizedPlaylist.id);
+			success('Playlist deleted', normalizedPlaylist.name);
 			router.back();
 		}
-	}, [playlist, removePlaylist, success]);
+	}, [normalizedPlaylist, removePlaylist, success]);
 
 	const handleRenamePlaylist = useCallback(
 		(newName: string) => {
-			if (playlist) {
-				renamePlaylist(playlist.id, newName);
+			if (normalizedPlaylist) {
+				renamePlaylist(normalizedPlaylist.id, newName);
 				success('Playlist renamed', newName);
 				setRenameDialogVisible(false);
 			}
 		},
-		[playlist, renamePlaylist, success]
+		[normalizedPlaylist, renamePlaylist, success]
 	);
 
 	const handleDragEnd = useCallback(
 		({ from, to }: { from: number; to: number }) => {
-			if (playlist && from !== to) {
-				reorderPlaylistTracks(playlist.id, from, to);
+			if (normalizedPlaylist && from !== to) {
+				reorderPlaylistTracks(normalizedPlaylist.id, from, to);
 			}
 		},
-		[playlist, reorderPlaylistTracks]
+		[normalizedPlaylist, reorderPlaylistTracks]
 	);
 
 	const toggleEditMode = useCallback(() => {
@@ -149,15 +214,15 @@ export default function PlaylistScreen() {
 	}, [selectedTracks, addSelectedToQueue, exitSelectionMode]);
 
 	const handleBatchRemoveFromPlaylist = useCallback(() => {
-		if (!playlist) return;
+		if (!normalizedPlaylist) return;
 
-		const positions = playlist.tracks
+		const positions = normalizedPlaylist.tracks
 			.filter((pt) => selectedTrackIds.has(pt.track.id.value))
 			.map((pt) => pt.position);
 
-		removeSelectedFromPlaylist(playlist.id, positions);
+		removeSelectedFromPlaylist(normalizedPlaylist.id, positions);
 		exitSelectionMode();
-	}, [playlist, selectedTrackIds, removeSelectedFromPlaylist, exitSelectionMode]);
+	}, [normalizedPlaylist, selectedTrackIds, removeSelectedFromPlaylist, exitSelectionMode]);
 
 	const handleDownloadAll = useCallback(async () => {
 		if (tracks.length > 0) {
@@ -185,8 +250,8 @@ export default function PlaylistScreen() {
 	);
 
 	const keyExtractor = useCallback(
-		(item: PlaylistTrack, index: number) => `${playlist?.id}-${index}-${item.track.id.value}`,
-		[playlist?.id]
+		(item: PlaylistTrack, index: number) => `${normalizedPlaylist?.id}-${index}-${item.track.id.value}`,
+		[normalizedPlaylist?.id]
 	);
 
 	const renderDraggableItem = useCallback(
@@ -245,7 +310,7 @@ export default function PlaylistScreen() {
 		[colors]
 	);
 
-	if (!playlist) {
+	if (!normalizedPlaylist) {
 		const emptyHeaderInfo: DetailsHeaderInfo = {
 			title: 'Playlist',
 			placeholderIcon: ListMusicIcon,
@@ -314,12 +379,12 @@ export default function PlaylistScreen() {
 		) : undefined;
 
 	const headerInfo: DetailsHeaderInfo = {
-		title: playlist.name,
+		title: normalizedPlaylist.name,
 		artworkUrl,
 		artworkShape: 'square',
 		placeholderIcon: ListMusicIcon,
-		metadata: playlist.description
-			? [{ text: playlist.description, variant: 'primary' }, ...metadata]
+		metadata: normalizedPlaylist.description
+			? [{ text: normalizedPlaylist.description, variant: 'primary' }, ...metadata]
 			: metadata,
 		actionButton,
 	};
@@ -337,7 +402,7 @@ export default function PlaylistScreen() {
 			<ConfirmationDialog
 				visible={deleteDialogVisible}
 				title={'Delete playlist'}
-				message={`Are you sure you want to delete "${playlist.name}"? This action cannot be undone.`}
+				message={`Are you sure you want to delete "${normalizedPlaylist.name}"? This action cannot be undone.`}
 				confirmLabel={'Delete'}
 				destructive
 				onConfirm={handleDeletePlaylist}
@@ -348,7 +413,7 @@ export default function PlaylistScreen() {
 				visible={renameDialogVisible}
 				title={'Rename playlist'}
 				placeholder={'Playlist name'}
-				initialValue={playlist.name}
+				initialValue={normalizedPlaylist.name}
 				confirmLabel={'Rename'}
 				onConfirm={handleRenamePlaylist}
 				onCancel={() => setRenameDialogVisible(false)}
@@ -368,7 +433,7 @@ export default function PlaylistScreen() {
 				<View style={styles.editModeContainer}>
 					{ListHeaderComponent}
 					<DraggableFlatList
-						data={playlist.tracks}
+						data={normalizedPlaylist.tracks}
 						keyExtractor={(item) => `${item.track.id.value}-${item.position}`}
 						renderItem={renderDraggableItem}
 						onDragEnd={handleDragEnd}
@@ -380,7 +445,7 @@ export default function PlaylistScreen() {
 
 		return (
 			<FlatList
-				data={playlist.tracks}
+				data={normalizedPlaylist.tracks}
 				renderItem={renderTrackItem}
 				keyExtractor={keyExtractor}
 				ListHeaderComponent={<>{ListHeaderComponent}</>}
