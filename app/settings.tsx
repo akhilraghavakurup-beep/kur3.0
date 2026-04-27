@@ -1,7 +1,6 @@
 import { Platform, StyleSheet } from 'react-native';
 import { useCallback, useMemo, useState } from 'react';
 import { router } from 'expo-router';
-import { useShallow } from 'zustand/react/shallow';
 import { ConfirmationDialog } from '@/src/components/ui/confirmation-dialog';
 import { VersionDialog } from '@/src/components/ui/version-dialog';
 import { PlayerAwareScrollView } from '@/src/components/ui/player-aware-scroll-view';
@@ -48,13 +47,7 @@ import { useToast } from '@/src/hooks/use-toast';
 import { permissionService } from '@/src/application/services/permission-service';
 
 export default function SettingsScreen() {
-	const { tracks, playlists, favorites } = useLibraryStore(
-		useShallow((state) => ({
-			tracks: state.tracks,
-			playlists: state.playlists,
-			favorites: state.favorites,
-		}))
-	);
+	const { tracks, playlists, favorites } = useLibraryStore();
 	const {
 		themePreference,
 		setThemePreference,
@@ -78,32 +71,7 @@ export default function SettingsScreen() {
 		customDownloadDirectoryName,
 		setCustomDownloadDirectory,
 		resetDownloadLocation,
-	} = useSettingsStore(
-		useShallow((state) => ({
-			themePreference: state.themePreference,
-			setThemePreference: state.setThemePreference,
-			defaultTab: state.defaultTab,
-			setDefaultTab: state.setDefaultTab,
-			accentColor: state.accentColor,
-			setAccentColor: state.setAccentColor,
-			openPlayerOnTrackClick: state.openPlayerOnTrackClick,
-			setOpenPlayerOnTrackClick: state.setOpenPlayerOnTrackClick,
-			showProviderLabel: state.showProviderLabel,
-			setShowProviderLabel: state.setShowProviderLabel,
-			progressBarStyle: state.progressBarStyle,
-			setProgressBarStyle: state.setProgressBarStyle,
-			playerBackground: state.playerBackground,
-			setPlayerBackground: state.setPlayerBackground,
-			preferredStreamQuality: state.preferredStreamQuality,
-			setPreferredStreamQuality: state.setPreferredStreamQuality,
-			autoplaySimilarOnQueueEnd: state.autoplaySimilarOnQueueEnd,
-			setAutoplaySimilarOnQueueEnd: state.setAutoplaySimilarOnQueueEnd,
-			downloadLocationMode: state.downloadLocationMode,
-			customDownloadDirectoryName: state.customDownloadDirectoryName,
-			setCustomDownloadDirectory: state.setCustomDownloadDirectory,
-			resetDownloadLocation: state.resetDownloadLocation,
-		}))
-	);
+	} = useSettingsStore();
 	const { stats } = useDownloadQueue();
 	const { isEnabled: eqEnabled, currentPreset } = useEqualizer();
 	const { clearDownloads } = useClearDownloads();

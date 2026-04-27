@@ -230,7 +230,6 @@ export class DownloadService {
 
 			const exportResult = await this._exportForExternalAccess(
 				trackId,
-				track.title,
 				fileResult.data.filePath,
 				streamResult.data.format ?? 'm4a'
 			);
@@ -405,13 +404,12 @@ export class DownloadService {
 
 	private async _exportForExternalAccess(
 		trackId: string,
-		displayName: string,
 		filePath: string,
 		format: string
 	): Promise<Result<ExternalDownloadResult, Error>> {
 		const settings = useSettingsStore.getState();
 
-		return exportAudioToExternalDirectory(filePath, trackId, displayName, format, {
+		return exportAudioToExternalDirectory(filePath, trackId, format, {
 			mode: settings.downloadLocationMode,
 			customDirectoryUri: settings.customDownloadDirectoryUri,
 			customDirectoryName: settings.customDownloadDirectoryName,
