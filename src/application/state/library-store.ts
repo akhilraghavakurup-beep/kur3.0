@@ -126,18 +126,20 @@ export const useLibraryStore = create<LibraryState>()(
 
 			addTrack: (track: Track) => {
 				set((state) => {
-					const exists = state.tracks.some((t) => t.id.value === track.id.value);
+					const normalizedTrack = normalizeTrack(track);
+					const exists = state.tracks.some((t) => t.id.value === normalizedTrack.id.value);
 					if (exists) {
 						return state;
 					}
-					return { tracks: [...state.tracks, { ...track, addedAt: new Date() }] };
+					return { tracks: [...state.tracks, { ...normalizedTrack, addedAt: new Date() }] };
 				});
 			},
 
 			addTracks: (tracks: Track[]) => {
 				set((state) => {
 					const existingIds = new Set(state.tracks.map((t) => t.id.value));
-					const newTracks = tracks.filter((t) => !existingIds.has(t.id.value));
+					const normalizedTracks = tracks.map((track) => normalizeTrack(track));
+					const newTracks = normalizedTracks.filter((t) => !existingIds.has(t.id.value));
 
 					if (newTracks.length === 0) {
 						return state;
@@ -194,16 +196,17 @@ export const useLibraryStore = create<LibraryState>()(
 			},
 
 			setPlaylists: (playlists: Playlist[]) => {
-				set({ playlists });
+				set({ playlists: playlists.map((playlist) => normalizePlaylist(playlist)) });
 			},
 
 			addPlaylist: (playlist: Playlist) => {
 				set((state) => {
-					const exists = state.playlists.some((p) => p.id === playlist.id);
+					const normalizedPlaylist = normalizePlaylist(playlist);
+					const exists = state.playlists.some((p) => p.id === normalizedPlaylist.id);
 					if (exists) {
 						return state;
 					}
-					return { playlists: [...state.playlists, playlist] };
+					return { playlists: [...state.playlists, normalizedPlaylist] };
 				});
 			},
 
@@ -216,7 +219,12 @@ export const useLibraryStore = create<LibraryState>()(
 			updatePlaylist: (playlistId: string, updates: Partial<Playlist>) => {
 				set((state) => ({
 					playlists: state.playlists.map((p) =>
-						p.id === playlistId ? { ...p, ...updates } : p
+						p.id === playlistId
+							? normalizePlaylist({
+									...p,
+									...updates,
+							  })
+							: p
 					),
 				}));
 			},
@@ -226,7 +234,10 @@ export const useLibraryStore = create<LibraryState>()(
 					playlists: state.playlists.map((p) => {
 						if (p.id !== playlistId) return p;
 
-						const exists = p.tracks.some((pt) => pt.track.id.value === track.id.value);
+						const normalizedTrack = normalizeTrack(track);
+						const exists = p.tracks.some(
+							(pt) => pt.track.id.value === normalizedTrack.id.value
+						);
 						if (exists) return p;
 
 						return {
@@ -234,7 +245,7 @@ export const useLibraryStore = create<LibraryState>()(
 							tracks: [
 								...p.tracks,
 								{
-									track,
+									track: normalizedTrack,
 									addedAt: new Date(),
 									position: p.tracks.length,
 								},
