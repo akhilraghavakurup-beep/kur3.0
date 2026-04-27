@@ -91,7 +91,7 @@ export function VersionDialog({ visible, onDismiss }: VersionDialogProps) {
 						/>
 						<InfoRow icon={CodeIcon} label={'Developed by'} value={'Kurup'} />
 						<InfoRow icon={CodeIcon} label={'Tested by'} value={'Nemo'} />
-						<InfoRow icon={CodeIcon} label={'Build'} value={'yellow pookie'} />
+						<InfoRow icon={CodeIcon} label={'Build'} value={'smiling pookie'} />
 						<InfoRow icon={CodeIcon} label={'Expo SDK'} value={expoSdkVersion} />
 						<InfoRow icon={SmartphoneIcon} label={'Platform'} value={platformVersion} />
 						<InfoRow
@@ -107,7 +107,7 @@ export function VersionDialog({ visible, onDismiss }: VersionDialogProps) {
 						variant={'bodySmall'}
 						style={[styles.description, { color: colors.onSurfaceVariant }]}
 					>
-						Kur-powered music playback with offline downloads and a focused mobile
+						JioSaavn-powered music playback with offline downloads and a focused mobile
 						experience.
 					</Text>
 				</Dialog.Content>

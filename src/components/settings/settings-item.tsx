@@ -73,19 +73,13 @@ export const SettingsItem = memo(function SettingsItem({
 
 	const renderDescription = subtitleElement ? () => subtitleElement : subtitle || undefined;
 
-	// ✅ FIX: Prevent onPress when rightElement exists (like Switch)
-	const handlePress = useCallback(() => {
-		if (rightElement) return;
-		onPress?.();
-	}, [rightElement, onPress]);
-
 	return (
 		<List.Item
 			title={title}
 			description={renderDescription}
 			left={renderLeft}
 			right={renderRight}
-			onPress={handlePress}
+			onPress={onPress}
 			titleStyle={[styles.title, { color: textColor, includeFontPadding: false }]}
 			descriptionStyle={{ color: colors.onSurfaceVariant, includeFontPadding: false }}
 			descriptionNumberOfLines={2}

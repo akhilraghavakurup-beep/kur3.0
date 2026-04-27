@@ -1,8 +1,8 @@
 {
     "expo":  {
-                 "name": "Kurmusic",
-                 "slug": "Kurmusic",
-                 "version":  "3.0.0",
+                 "name": "kurmusic",
+                 "slug": "kurmusic",
+                 "version":  "2.0.0",
                  "orientation":  "portrait",
                  "icon":  "./assets/images/icon.png",
                  "scheme": "kurmusic",
@@ -10,7 +10,7 @@
                  "newArchEnabled":  true,
                  "ios":  {
                              "supportsTablet":  true,
-                             "bundleIdentifier":  "com.kur.music.app",
+                             "bundleIdentifier":  "com.aria.music.app",
                              "infoPlist":  {
                                                "UIBackgroundModes":  [
                                                                          "audio"
