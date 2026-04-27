@@ -109,6 +109,13 @@ async function resolveExternalDirectory(
 		return err(new Error('External download location is only supported on Android'));
 	}
 
+	if (config.customDirectoryUri) {
+		return ok({
+			uri: config.customDirectoryUri,
+			name: config.customDirectoryName ?? 'Selected folder',
+		});
+	}
+
 	if (config.mode === 'custom') {
 		if (!config.customDirectoryUri) {
 			return err(new Error('No custom download folder selected'));

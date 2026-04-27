@@ -63,9 +63,9 @@ export const LIBRARY_TAB_OPTIONS: { value: LibraryTabId; label: string; icon: Lu
 
 export const TAB_INDEX_MAP: Record<LibraryTabId, number> = {
 	songs: 0,
-	artists: 1,
-	albums: 2,
-	playlists: 3,
+	playlists: 1,
+	artists: 2,
+	albums: 3,
 };
 
 export const PLAYER_BACKGROUND_OPTIONS: {

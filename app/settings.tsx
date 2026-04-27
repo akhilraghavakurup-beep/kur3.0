@@ -2,6 +2,7 @@ import { StyleSheet } from 'react-native';
 import { useCallback, useMemo, useState } from 'react';
 import { router } from 'expo-router';
 import { useShallow } from 'zustand/react/shallow';
+import { ActionSheet } from '@/src/components/ui/action-sheet';
 import { ConfirmationDialog } from '@/src/components/ui/confirmation-dialog';
 import { VersionDialog } from '@/src/components/ui/version-dialog';
 import { PlayerAwareScrollView } from '@/src/components/ui/player-aware-scroll-view';
@@ -17,7 +18,6 @@ import { Switch } from 'react-native-paper';
 import {
 	TrashIcon,
 	InfoIcon,
-	FileTextIcon,
 	PlugIcon,
 	HardDriveIcon,
 	SunMoonIcon,
@@ -29,6 +29,7 @@ import {
 	MonitorPlayIcon,
 	PaintbrushIcon,
 	TagIcon,
+	FolderOpenIcon,
 } from 'lucide-react-native';
 import {
 	THEME_OPTIONS,
@@ -47,10 +48,6 @@ import { useFactoryReset } from '@/src/hooks/use-factory-reset';
 import { useToast } from '@/src/hooks/use-toast';
 import Constants from 'expo-constants';
 import { permissionService } from '@/src/application/services/permission-service';
-import {
-	exportCrashLogToFolder,
-	getCrashLogPath,
-} from '@/src/shared/services/crash-log';
 
 export default function SettingsScreen() {
 	const { tracks, playlists, favorites } = useLibraryStore(
@@ -79,6 +76,10 @@ export default function SettingsScreen() {
 		setPreferredStreamQuality,
 		autoplaySimilarOnQueueEnd,
 		setAutoplaySimilarOnQueueEnd,
+		downloadLocationMode,
+		customDownloadDirectoryName,
+		setCustomDownloadDirectory,
+		resetDownloadLocation,
 	} = useSettingsStore(
 		useShallow((state) => ({
 			themePreference: state.themePreference,
@@ -99,6 +100,10 @@ export default function SettingsScreen() {
 			setPreferredStreamQuality: state.setPreferredStreamQuality,
 			autoplaySimilarOnQueueEnd: state.autoplaySimilarOnQueueEnd,
 			setAutoplaySimilarOnQueueEnd: state.setAutoplaySimilarOnQueueEnd,
+			downloadLocationMode: state.downloadLocationMode,
+			customDownloadDirectoryName: state.customDownloadDirectoryName,
+			setCustomDownloadDirectory: state.setCustomDownloadDirectory,
+			resetDownloadLocation: state.resetDownloadLocation,
 		}))
 	);
 	const { stats } = useDownloadQueue();
@@ -137,6 +142,7 @@ export default function SettingsScreen() {
 	const [resetSettingsDialogVisible, setResetSettingsDialogVisible] = useState(false);
 	const [resetEqualizerDialogVisible, setResetEqualizerDialogVisible] = useState(false);
 	const [factoryResetDialogVisible, setFactoryResetDialogVisible] = useState(false);
+	const [downloadLocationSheetVisible, setDownloadLocationSheetVisible] = useState(false);
 
 	const openEqualizerSheet = useCallback(() => {
 		setEqualizerSheetOpen(true);
@@ -194,25 +200,75 @@ export default function SettingsScreen() {
 		setFactoryResetDialogVisible(false);
 	};
 
-	const handleExportCrashLog = useCallback(async () => {
-		const crashLogPath = getCrashLogPath();
-		if (!crashLogPath) {
-			success('Crash log unavailable', 'Crash logs cannot be stored on this device');
-			return;
-		}
+	const downloadLocationLabel =
+		customDownloadDirectoryName ?? (downloadLocationMode === 'music' ? 'Music folder' : 'Selected folder');
 
-		const result = await permissionService.requestDirectoryPermission();
-		if (!result.success) {
-			return;
-		}
+	const handleSelectDownloadLocation = useCallback(
+		async (selection: string) => {
+			setDownloadLocationSheetVisible(false);
 
-		const exportResult = await exportCrashLogToFolder(result.data.uri);
-		if (exportResult.success) {
-			success('Crash log exported', `Saved to ${result.data.name}`);
-		} else {
-			success('Export failed', exportResult.error.message);
-		}
-	}, [success]);
+			if (selection === 'music') {
+				const result = await permissionService.requestMusicDirectoryPermission();
+				if (!result.success) {
+					return;
+				}
+
+				setCustomDownloadDirectory(result.data.uri, result.data.name);
+				success(
+					'Download location saved',
+					`${result.data.name} will be used as the default download directory`
+				);
+				return;
+			}
+
+			if (selection === 'folder') {
+				const result = await permissionService.requestDirectoryPermission();
+				if (!result.success) {
+					return;
+				}
+
+				setCustomDownloadDirectory(result.data.uri, result.data.name);
+				success(
+					'Download location saved',
+					`${result.data.name} will be used as the default download directory`
+				);
+				return;
+			}
+
+			if (selection === 'reset') {
+				resetDownloadLocation();
+				success('Download location reset', 'Downloads will use the Music folder again');
+			}
+		},
+		[resetDownloadLocation, setCustomDownloadDirectory, success]
+	);
+
+	const downloadLocationGroups = useMemo(
+		() => [
+			{
+				items: [
+					{
+						id: 'music',
+						label: 'Music folder',
+						icon: MusicIcon,
+						checked: downloadLocationLabel.toLowerCase() === 'music folder',
+					},
+					{
+						id: 'folder',
+						label: 'Choose folder',
+						icon: FolderOpenIcon,
+						checked: downloadLocationLabel.toLowerCase() !== 'music folder',
+					},
+					{
+						id: 'reset',
+						label: 'Reset to Music',
+						icon: RotateCcwIcon,
+					},
+				],
+			},
+		],
+		[downloadLocationLabel]
+	);
 
 	const appVersion = Constants.expoConfig?.version ?? '1.0.0';
 
@@ -322,6 +378,13 @@ export default function SettingsScreen() {
 				<SettingsSection title={'Storage'}>
 					<SettingsItem
 						icon={HardDriveIcon}
+						title={'Default download directory'}
+						subtitle={downloadLocationLabel}
+						onPress={() => setDownloadLocationSheetVisible(true)}
+						showChevron
+					/>
+					<SettingsItem
+						icon={HardDriveIcon}
 						title={'Storage used'}
 						subtitle={`${formatFileSize(stats.totalSize)} · ${stats.completedCount} files`}
 					/>
@@ -390,20 +453,21 @@ export default function SettingsScreen() {
 						onPress={() => setVersionDialogVisible(true)}
 						showChevron
 					/>
-					<SettingsItem
-						icon={FileTextIcon}
-						title={'Crash log'}
-						subtitle={'Export the latest crash log to a folder you can open in a file manager'}
-						onPress={handleExportCrashLog}
-						showChevron
-					/>
 					<SettingsItem icon={InfoIcon} title={'Developed by'} subtitle={'Kurup'} />
 					<SettingsItem icon={InfoIcon} title={'Tested by'} subtitle={'Nemo'} />
-					<SettingsItem icon={InfoIcon} title={'Build'} subtitle={'smiling pookie'} />
+					<SettingsItem icon={InfoIcon} title={'Build'} subtitle={"Aj's REQUEST"} />
 				</SettingsSection>
 			</PlayerAwareScrollView>
 
 			<EqualizerSheet isOpen={equalizerSheetOpen} onClose={closeEqualizerSheet} />
+
+			<ActionSheet
+				isOpen={downloadLocationSheetVisible}
+				portalName={'download-location'}
+				onClose={() => setDownloadLocationSheetVisible(false)}
+				onSelect={handleSelectDownloadLocation}
+				groups={downloadLocationGroups}
+			/>
 
 			<ConfirmationDialog
 				visible={clearLibraryDialogVisible}

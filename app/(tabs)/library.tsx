@@ -81,8 +81,19 @@ export default function HomeScreen() {
 								</View>
 							</Freeze>
 						</TabScreen>
-						<TabScreen label={'Artists'} icon={'account-music'}>
+						<TabScreen label={'Playlists'} icon={'playlist-music'}>
 							<Freeze freeze={tabIndex !== 1}>
+								<View style={styles.tabContent}>
+									<PlaylistList
+										playlists={playlists}
+										isLoading={isLoading}
+										onScroll={handleScroll}
+									/>
+								</View>
+							</Freeze>
+						</TabScreen>
+						<TabScreen label={'Artists'} icon={'account-music'}>
+							<Freeze freeze={tabIndex !== 2}>
 								<View style={styles.tabContent}>
 									<ArtistList
 										artists={artists}
@@ -93,21 +104,10 @@ export default function HomeScreen() {
 							</Freeze>
 						</TabScreen>
 						<TabScreen label={'Albums'} icon={'album'}>
-							<Freeze freeze={tabIndex !== 2}>
+							<Freeze freeze={tabIndex !== 3}>
 								<View style={styles.tabContent}>
 									<AlbumList
 										albums={albums}
-										isLoading={isLoading}
-										onScroll={handleScroll}
-									/>
-								</View>
-							</Freeze>
-						</TabScreen>
-						<TabScreen label={'Playlists'} icon={'playlist-music'}>
-							<Freeze freeze={tabIndex !== 3}>
-								<View style={styles.tabContent}>
-									<PlaylistList
-										playlists={playlists}
 										isLoading={isLoading}
 										onScroll={handleScroll}
 									/>
