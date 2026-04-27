@@ -5,6 +5,7 @@ import type { Result } from '../../shared/types/result';
 import { ok, err } from '../../shared/types/result';
 import { getLogger } from '../../shared/services/logger';
 import { permissionService } from '../../application/services/permission-service';
+import { useSettingsStore } from '../../application/state/settings-store';
 import type { DownloadLocationMode } from '../../application/state/settings-store';
 
 const logger = getLogger('DownloadManager');
@@ -127,7 +128,11 @@ async function resolveExternalDirectory(
 		});
 	}
 
-	return permissionService.requestMusicDirectoryPermission();
+	const result = await permissionService.requestMusicDirectoryPermission();
+	if (result.success) {
+		useSettingsStore.getState().setCustomDownloadDirectory(result.data.uri, result.data.name);
+	}
+	return result;
 }
 
 async function deleteExistingExternalFile(directoryUri: string, fileName: string): Promise<void> {

@@ -56,15 +56,6 @@ function buildLocalSections(curated: ReturnType<typeof useCuratedContent>): Feed
 		});
 	}
 
-	if (curated.recentlyAdded.length > 0) {
-		sections.push({
-			id: 'local-recently-added',
-			title: 'Recently Added',
-			items: curated.recentlyAdded.map((track) => ({ type: 'track', data: track })),
-			source: 'local',
-		});
-	}
-
 	return sections;
 }
 

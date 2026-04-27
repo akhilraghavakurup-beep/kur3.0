@@ -43,11 +43,6 @@ export function VersionDialog({ visible, onDismiss }: VersionDialogProps) {
 	const { colors } = useAppTheme();
 
 	const appVersion = Constants.expoConfig?.version ?? '1.0.0';
-	const buildNumber = Platform.select({
-		ios: Constants.expoConfig?.ios?.buildNumber,
-		android: Constants.expoConfig?.android?.versionCode?.toString(),
-		default: undefined,
-	});
 	const expoSdkVersion = Constants.expoConfig?.sdkVersion ?? 'Unknown';
 	const platformVersion = `${Platform.OS === 'ios' ? 'iOS' : 'Android'} ${Platform.Version}`;
 
@@ -91,11 +86,11 @@ export function VersionDialog({ visible, onDismiss }: VersionDialogProps) {
 						<InfoRow
 							icon={PackageIcon}
 							label={'Version'}
-							value={buildNumber ? `${appVersion} (${buildNumber})` : appVersion}
+							value={appVersion}
 						/>
 						<InfoRow icon={CodeIcon} label={'Developed by'} value={'Kurup'} />
 						<InfoRow icon={CodeIcon} label={'Tested by'} value={'Nemo'} />
-						<InfoRow icon={CodeIcon} label={'Build'} value={'smiling pookie'} />
+						<InfoRow icon={CodeIcon} label={'Build'} value={"Aj's REQUEST"} />
 						<InfoRow icon={CodeIcon} label={'Expo SDK'} value={expoSdkVersion} />
 						<InfoRow icon={SmartphoneIcon} label={'Platform'} value={platformVersion} />
 						<InfoRow

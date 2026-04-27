@@ -5,7 +5,6 @@ import { PageLayout } from '@/src/components/ui/page-layout';
 import {
 	HeartIcon,
 	ClockIcon,
-	SparklesIcon,
 	SearchIcon,
 	MusicIcon,
 	XIcon,
@@ -87,7 +86,7 @@ export default function SearchScreen() {
 	const removeRecentSearch = useSearchStore((s) => s.removeRecentSearch);
 	const clearRecentSearches = useSearchStore((s) => s.clearRecentSearches);
 
-	const { recentlyPlayed, favoriteTracks, recentlyAdded, hasCuratedContent } =
+	const { recentlyPlayed, favoriteTracks, hasCuratedContent } =
 		useCuratedContent(10);
 
 	const {
@@ -335,14 +334,6 @@ export default function SearchScreen() {
 									tracks={favoriteTracks}
 								/>
 
-								{recentlyAdded.length > 0 && (
-									<CuratedSection
-										id={'recently-added'}
-										title={'Recently Added'}
-										icon={SparklesIcon}
-										tracks={recentlyAdded}
-									/>
-								)}
 							</>
 						)}
 					</>
