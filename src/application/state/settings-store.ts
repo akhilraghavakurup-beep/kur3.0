@@ -75,6 +75,8 @@ interface SettingsState {
 	preferredStreamQuality: StreamQuality;
 	autoplaySimilarOnQueueEnd: boolean;
 	downloadLocationMode: DownloadLocationMode;
+	musicDownloadDirectoryUri: string | null;
+	musicDownloadDirectoryName: string | null;
 	customDownloadDirectoryUri: string | null;
 	customDownloadDirectoryName: string | null;
 
@@ -102,6 +104,7 @@ interface SettingsState {
 	setPreferredStreamQuality: (quality: StreamQuality) => void;
 	setAutoplaySimilarOnQueueEnd: (enabled: boolean) => void;
 	setDownloadLocationMode: (mode: DownloadLocationMode) => void;
+	setMusicDownloadDirectory: (uri: string, name: string) => void;
 	setCustomDownloadDirectory: (uri: string, name: string) => void;
 	resetDownloadLocation: () => void;
 	resetAllSettings: () => void;
@@ -137,6 +140,8 @@ export const useSettingsStore = create<SettingsState>()(
 			preferredStreamQuality: 'high',
 			autoplaySimilarOnQueueEnd: true,
 			downloadLocationMode: 'music',
+			musicDownloadDirectoryUri: null,
+			musicDownloadDirectoryName: null,
 			customDownloadDirectoryUri: null,
 			customDownloadDirectoryName: null,
 
@@ -269,6 +274,13 @@ export const useSettingsStore = create<SettingsState>()(
 			setDownloadLocationMode: (mode: DownloadLocationMode) => {
 				set({ downloadLocationMode: mode });
 			},
+			setMusicDownloadDirectory: (uri: string, name: string) => {
+				set({
+					downloadLocationMode: 'music',
+					musicDownloadDirectoryUri: uri,
+					musicDownloadDirectoryName: name,
+				});
+			},
 			setCustomDownloadDirectory: (uri: string, name: string) => {
 				set({
 					downloadLocationMode: 'custom',
@@ -300,6 +312,8 @@ export const useSettingsStore = create<SettingsState>()(
 					preferredStreamQuality: 'high',
 					autoplaySimilarOnQueueEnd: true,
 					downloadLocationMode: 'music',
+					musicDownloadDirectoryUri: null,
+					musicDownloadDirectoryName: null,
 					customDownloadDirectoryUri: null,
 					customDownloadDirectoryName: null,
 				});
@@ -404,6 +418,12 @@ export const useSetAutoplaySimilarOnQueueEnd = () =>
 
 export const useDownloadLocationMode = () =>
 	useSettingsStore((state) => state.downloadLocationMode);
+
+export const useMusicDownloadDirectoryUri = () =>
+	useSettingsStore((state) => state.musicDownloadDirectoryUri);
+
+export const useMusicDownloadDirectoryName = () =>
+	useSettingsStore((state) => state.musicDownloadDirectoryName);
 
 export const useCustomDownloadDirectoryUri = () =>
 	useSettingsStore((state) => state.customDownloadDirectoryUri);

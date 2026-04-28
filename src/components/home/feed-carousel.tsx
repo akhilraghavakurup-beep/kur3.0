@@ -24,11 +24,23 @@ export const FeedCarousel = memo(function FeedCarousel({ section }: FeedCarousel
 	);
 
 	return (
-		<View style={styles.container}>
+		<View
+			style={[
+				styles.container,
+				{ backgroundColor: colors.surfaceContainerLow, borderColor: colors.outlineVariant },
+			]}
+		>
 			<View style={styles.header}>
-				<Text variant={'titleMedium'} style={[styles.title, { color: colors.onSurface }]}>
-					{section.title}
-				</Text>
+				<View style={styles.headerTitleRow}>
+					<Text variant={'titleMedium'} style={[styles.title, { color: colors.onSurface }]}>
+						{section.title}
+					</Text>
+					<View style={[styles.headerPill, { backgroundColor: colors.surfaceContainerHighest }]}>
+						<Text variant={'labelSmall'} style={{ color: colors.onSurfaceVariant }}>
+							{section.items.length} items
+						</Text>
+					</View>
+				</View>
 				{section.subtitle && (
 					<Text variant={'bodySmall'} style={{ color: colors.onSurfaceVariant }}>
 						{section.subtitle}
@@ -112,13 +124,31 @@ const FeedCarouselItem = memo(function FeedCarouselItem({
 const styles = StyleSheet.create({
 	container: {
 		gap: 12,
+		marginHorizontal: 12,
+		paddingVertical: 14,
+		paddingTop: 16,
+		borderRadius: 28,
+		borderWidth: StyleSheet.hairlineWidth,
+		overflow: 'hidden',
 	},
 	header: {
 		paddingHorizontal: 16,
 		gap: 2,
 	},
+	headerTitleRow: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'space-between',
+		gap: 12,
+	},
 	title: {
-		fontWeight: '600',
+		fontWeight: '700',
+		flex: 1,
+	},
+	headerPill: {
+		paddingHorizontal: 10,
+		paddingVertical: 5,
+		borderRadius: 999,
 	},
 	scrollContent: {
 		paddingHorizontal: 16,

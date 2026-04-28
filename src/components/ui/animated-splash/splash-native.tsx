@@ -5,8 +5,15 @@
  * Uses Reanimated for smooth animations on the native UI thread.
  */
 
+import { useEffect } from 'react';
 import { View, Text, Image } from 'react-native';
-import Animated from 'react-native-reanimated';
+import Animated, {
+	useAnimatedStyle,
+	useSharedValue,
+	withRepeat,
+	withSequence,
+	withTiming,
+} from 'react-native-reanimated';
 import type { AnimatedStyle } from 'react-native-reanimated';
 import type { ViewStyle } from 'react-native';
 import { AnimatedPolygonView } from '../animated-polygon';
@@ -39,19 +46,46 @@ export function SplashNative({
 	progressFillStyle,
 	progressSectionStyle,
 }: SplashNativeProps) {
+	const logoScale = useSharedValue(1);
+	const logoGlow = useSharedValue(0.75);
+
+	useEffect(() => {
+		logoScale.value = withRepeat(
+			withSequence(
+				withTiming(1.06, { duration: 1200 }),
+				withTiming(1, { duration: 1200 })
+			),
+			-1,
+			true
+		);
+		logoGlow.value = withRepeat(
+			withSequence(
+				withTiming(1, { duration: 1200 }),
+				withTiming(0.75, { duration: 1200 })
+			),
+			-1,
+			true
+		);
+	}, [logoGlow, logoScale]);
+
+	const logoStyle = useAnimatedStyle(() => ({
+		transform: [{ scale: logoScale.value }],
+		opacity: logoGlow.value,
+	}));
+
 	return (
 		<Animated.View style={[styles.container, containerStyle]}>
 			<Animated.View
 				style={[styles.background, { backgroundColor: colors.background }, backgroundStyle]}
 			/>
 			<View style={styles.content}>
-				<View style={styles.iconWrapper}>
+				<Animated.View style={[styles.iconWrapper, logoStyle]}>
 					<Image
-						source={require('@/assets/icon-content.png')}
+						source={require('@/assets/images/kur-logo.png')}
 						style={{ width: ICON_SIZE, height: ICON_SIZE }}
 						resizeMode={'contain'}
 					/>
-				</View>
+				</Animated.View>
 				<Animated.View style={[styles.polygonWrapper, polygonContainerStyle]}>
 					<AnimatedPolygonView
 						segments={segments}

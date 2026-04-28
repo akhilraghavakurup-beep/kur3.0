@@ -57,7 +57,7 @@ export function VersionDialog({ visible, onDismiss }: VersionDialogProps) {
 				onDismiss={onDismiss}
 				style={[styles.dialog, { backgroundColor: colors.surfaceContainerHigh }]}
 			>
-				<Dialog.Title style={{ color: colors.onSurface }}>About kurmusic</Dialog.Title>
+				<Dialog.Title style={{ color: colors.onSurface }}>About Kur Music</Dialog.Title>
 				<Dialog.Content>
 					<View style={styles.headerSection}>
 						<View
@@ -67,13 +67,15 @@ export function VersionDialog({ visible, onDismiss }: VersionDialogProps) {
 							]}
 						>
 							<Image
-								source={require('../../../assets/images/icon.png')}
+								source={require('../../../assets/images/kur-logo.png')}
 								style={styles.logo}
 								resizeMode={'contain'}
 							/>
 						</View>
 						<View style={styles.headerText}>
-							<Text variant={'headlineSmall'} style={{ color: colors.onSurface }}>kurmusic</Text>
+							<Text variant={'headlineSmall'} style={{ color: colors.onSurface }}>
+								Kur Music
+							</Text>
 							<Text variant={'bodyMedium'} style={{ color: colors.onSurfaceVariant }}>
 								Music Player
 							</Text>
@@ -102,13 +104,13 @@ export function VersionDialog({ visible, onDismiss }: VersionDialogProps) {
 
 					<Divider style={[styles.divider, { backgroundColor: colors.outlineVariant }]} />
 
-					<Text
-						variant={'bodySmall'}
-						style={[styles.description, { color: colors.onSurfaceVariant }]}
-					>
-						JioSaavn-powered music playback with offline downloads and a focused mobile
-						experience.
-					</Text>
+						<Text
+							variant={'bodySmall'}
+							style={[styles.description, { color: colors.onSurfaceVariant }]}
+						>
+							JioSaavn-powered music playback with offline downloads and a focused mobile
+							experience.
+						</Text>
 				</Dialog.Content>
 				<Dialog.Actions style={styles.actions}>
 					<Button mode={'text'} onPress={onDismiss} textColor={colors.primary}>

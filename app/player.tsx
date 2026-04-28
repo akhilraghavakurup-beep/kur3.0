@@ -8,12 +8,14 @@ import { router, usePathname } from 'expo-router';
 import { Text, IconButton } from 'react-native-paper';
 import LottieView from 'lottie-react-native';
 import type { AnimationObject } from 'lottie-react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
 	FadeInDown,
 	FadeInUp,
 	FadeOut,
 	LinearTransition,
 	ZoomIn,
+	runOnJS,
 } from 'react-native-reanimated';
 import { Icon } from '@/src/components/ui/icon';
 import { ChevronLeftIcon, DownloadIcon, CheckIcon, LoaderCircleIcon, ListMusic } from 'lucide-react-native';
@@ -35,6 +37,7 @@ import { useLibraryStore, useIsFavorite } from '@/src/application/state/library-
 import { useCurrentTrack, usePlayerError } from '@/src/application/state/player-store';
 import { useIsDownloaded, useIsDownloading } from '@/src/application/state/download-store';
 import { useDownloadActions } from '@/src/hooks/use-download-actions';
+import { usePlayerActions } from '@/src/hooks/use-player';
 import { usePreferredStreamQuality } from '@/src/application/state/settings-store';
 
 const BLUR_INTENSITY = 120;
@@ -81,6 +84,7 @@ function PlayerScreenContent() {
 	const showLyrics = useShowLyrics();
 	const openQueueSheet = usePlayerUIStore((s) => s.openQueueSheet);
 	const [artworkLoaded, setArtworkLoaded] = useState(false);
+	const { skipToNext, skipToPrevious } = usePlayerActions();
 
 	useLyrics();
 
@@ -136,6 +140,24 @@ function PlayerScreenContent() {
 		setArtworkLoaded(true);
 	}, []);
 
+	const swipeGesture = useMemo(
+		() =>
+			Gesture.Pan()
+				.activeOffsetX([-20, 20])
+				.failOffsetY([-15, 15])
+				.onEnd((event) => {
+					const shouldSkipNext = event.translationX <= -80 || event.velocityX <= -900;
+					const shouldSkipPrevious = event.translationX >= 80 || event.velocityX >= 900;
+
+					if (shouldSkipNext) {
+						runOnJS(skipToNext)();
+					} else if (shouldSkipPrevious) {
+						runOnJS(skipToPrevious)();
+					}
+				}),
+		[skipToNext, skipToPrevious]
+	);
+
 	if (!currentTrack) {
 		return null;
 	}
@@ -149,15 +171,16 @@ function PlayerScreenContent() {
 		backgroundStyle === 'theme-color' ? (isDark ? 'light' : 'dark') : 'light';
 
 	return (
-		<View style={[styles.container, { backgroundColor: appColors.background }]}>
-			<StatusBar style={statusBarStyle} />
-			{renderBackground(backgroundStyle, artworkUrl, appColors.background, dominantColor)}
+		<GestureDetector gesture={swipeGesture}>
+			<View style={[styles.container, { backgroundColor: appColors.background }]}>
+				<StatusBar style={statusBarStyle} />
+				{renderBackground(backgroundStyle, artworkUrl, appColors.background, dominantColor)}
 
-			<SafeAreaView style={styles.safeArea}>
-				<View style={styles.content}>
-					<Animated.View entering={FadeInDown.duration(320)} style={styles.header}>
-						<IconButton
-							icon={() => (
+				<SafeAreaView style={styles.safeArea}>
+					<View style={styles.content}>
+						<Animated.View entering={FadeInDown.duration(320)} style={styles.header}>
+							<IconButton
+								icon={() => (
 								<Icon as={ChevronLeftIcon} size={24} color={colors.onSurface} />
 							)}
 							onPress={() => router.back()}
@@ -329,9 +352,10 @@ function PlayerScreenContent() {
 					<Animated.View entering={FadeInUp.duration(320).delay(280)}>
 						<PlayerControls size={'lg'} />
 					</Animated.View>
-				</View>
-			</SafeAreaView>
-		</View>
+					</View>
+				</SafeAreaView>
+			</View>
+		</GestureDetector>
 	);
 }
 

@@ -19,12 +19,10 @@ import { useSearchLibraryResults } from './use-search-library-results';
 import { useSearchExploreResults } from './use-search-explore-results';
 
 const DEBOUNCE_MS = 300;
-const SUGGEST_DEBOUNCE_MS = 80;
 
 export function useUnifiedSearch() {
 	const [localQuery, setLocalQuery] = useState('');
 	const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-	const suggestionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
 	const filterState = useSearchFilterStore(
 		useShallow((s) => ({
@@ -50,9 +48,6 @@ export function useUnifiedSearch() {
 		return () => {
 			if (debounceTimerRef.current) {
 				clearTimeout(debounceTimerRef.current);
-			}
-			if (suggestionTimerRef.current) {
-				clearTimeout(suggestionTimerRef.current);
 			}
 			searchService.cancelSearch();
 		};
@@ -98,9 +93,6 @@ export function useUnifiedSearch() {
 		if (debounceTimerRef.current) {
 			clearTimeout(debounceTimerRef.current);
 		}
-		if (suggestionTimerRef.current) {
-			clearTimeout(suggestionTimerRef.current);
-		}
 
 		const trimmed = newQuery.trim();
 		if (!trimmed) {
@@ -108,10 +100,6 @@ export function useUnifiedSearch() {
 			useSearchStore.getState().clearResults();
 			return;
 		}
-
-		suggestionTimerRef.current = setTimeout(() => {
-			void searchService.getSuggestions(trimmed);
-		}, SUGGEST_DEBOUNCE_MS);
 
 		useSearchStore.getState().setSearching(true);
 
@@ -124,9 +112,6 @@ export function useUnifiedSearch() {
 		setLocalQuery('');
 		if (debounceTimerRef.current) {
 			clearTimeout(debounceTimerRef.current);
-		}
-		if (suggestionTimerRef.current) {
-			clearTimeout(suggestionTimerRef.current);
 		}
 		searchService.cancelSearch();
 		useSearchStore.getState().clearResults();

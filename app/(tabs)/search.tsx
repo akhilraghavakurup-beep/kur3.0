@@ -1,5 +1,5 @@
-import { useCallback, useMemo, useState, useRef } from 'react';
-import { View, StyleSheet, TextInput, Pressable } from 'react-native';
+import { useCallback, useMemo, useState } from 'react';
+import { View, StyleSheet, Pressable } from 'react-native';
 import { PlayerAwareScrollView } from '@/src/components/ui/player-aware-scroll-view';
 import { PageLayout } from '@/src/components/ui/page-layout';
 import {
@@ -27,7 +27,6 @@ import {
 	LibraryResults,
 	ExploreResults,
 	RecentSearches,
-	SearchSuggestions,
 } from '@/src/components/search';
 import { useCuratedContent } from '@/src/hooks/use-curated-content';
 import { useUnifiedSearch } from '@/src/hooks/use-unified-search';
@@ -79,10 +78,7 @@ export default function SearchScreen() {
 	const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false);
 	const [selectionSource, setSelectionSource] = useState<'library' | 'explore'>('library');
 	const [expandedSections, setExpandedSections] = useState<Set<ExpandedSectionKey>>(new Set());
-	const searchInputRef = useRef<TextInput>(null);
-
 	const recentSearches = useSearchStore((s) => s.recentSearches);
-	const suggestions = useSearchStore((s) => s.suggestions);
 	const removeRecentSearch = useSearchStore((s) => s.removeRecentSearch);
 	const clearRecentSearches = useSearchStore((s) => s.clearRecentSearches);
 
@@ -188,15 +184,6 @@ export default function SearchScreen() {
 		[search]
 	);
 
-	const handleSelectSuggestion = useCallback(
-		(suggestionQuery: string) => {
-			search(suggestionQuery);
-			useSearchStore.getState().addRecentSearch(suggestionQuery);
-			searchInputRef.current?.blur();
-		},
-		[search]
-	);
-
 	const toggleExpandedSection = useCallback((key: ExpandedSectionKey) => {
 		setExpandedSections((prev) => {
 			const next = new Set(prev);
@@ -260,7 +247,6 @@ export default function SearchScreen() {
 						style={styles.searchIcon}
 					/>
 					<TextInput
-						ref={searchInputRef}
 						value={query}
 						onChangeText={search}
 						style={[styles.searchInput, { color: colors.onSurface }]}
@@ -338,10 +324,6 @@ export default function SearchScreen() {
 						)}
 					</>
 				)}
-
-				{hasQuery && suggestions.length > 0 && (
-				<SearchSuggestions suggestions={suggestions} onSelect={handleSelectSuggestion} />
-			)}
 
 				{showNoResults && (
 					<View style={styles.emptyContainer}>

@@ -8,6 +8,9 @@ import {
 	type NativeScrollEvent,
 } from 'react-native';
 import { AlertCircleIcon, MusicIcon } from 'lucide-react-native';
+import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Text } from 'react-native-paper';
 import { PageLayout } from '@/src/components/ui/page-layout';
 import { PlayerAwareScrollView } from '@/src/components/ui/player-aware-scroll-view';
 import { EmptyState } from '@/src/components/ui/empty-state';
@@ -128,15 +131,54 @@ export default function HomeScreen() {
 				{showEmpty && (
 					<EmptyState
 						icon={MusicIcon}
-						title={'Your feed is empty'}
-						description={
-							'Connect a music provider or start listening to see personalized content here'
-						}
+						title={'Pick your languages'}
+						description={'Select one or more languages in Settings to unlock curated JioSaavn shelves.'}
 					/>
 				)}
 
 				{hasData && (
 					<View style={styles.content}>
+						<View style={[styles.heroCard, { borderColor: colors.outlineVariant }]}>
+							<LinearGradient
+								colors={[
+									'rgba(105, 74, 255, 0.28)',
+									'rgba(18, 22, 48, 0.92)',
+								]}
+								start={{ x: 0, y: 0 }}
+								end={{ x: 1, y: 1 }}
+								style={StyleSheet.absoluteFill}
+							/>
+							<View style={styles.heroInner}>
+								<View style={styles.heroLogoWrap}>
+									<Image
+										source={require('../../assets/images/kur-mark.png')}
+										style={styles.heroLogo}
+										contentFit={'contain'}
+									/>
+								</View>
+								<View style={styles.heroCopy}>
+									<Text variant={'headlineSmall'} style={[styles.heroTitle, { color: colors.onSurface }]}>
+										Kur Music
+									</Text>
+									<Text variant={'bodyMedium'} style={[styles.heroSubtitle, { color: colors.onSurfaceVariant }]}>
+										BlackHole-style shelves from JioSaavn, driven by your saved language cookies.
+									</Text>
+								</View>
+							</View>
+							<View style={styles.heroBadges}>
+								{['Direct API', 'No search', 'Language aware'].map((badge) => (
+									<View
+										key={badge}
+										style={[styles.heroBadge, { backgroundColor: colors.surfaceContainerHigh }]}
+									>
+										<Text variant={'labelSmall'} style={{ color: colors.onSurfaceVariant }}>
+											{badge}
+										</Text>
+									</View>
+								))}
+							</View>
+						</View>
+
 						{visibleLocalSections.map((section) => (
 							<FeedCarousel key={section.id} section={section} />
 						))}
@@ -160,8 +202,53 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
 	content: {
-		gap: 24,
-		paddingTop: 8,
-		paddingBottom: 16,
+		gap: 18,
+		paddingTop: 10,
+		paddingBottom: 20,
+	},
+	heroCard: {
+		marginHorizontal: 12,
+		padding: 16,
+		borderRadius: 28,
+		overflow: 'hidden',
+		borderWidth: StyleSheet.hairlineWidth,
+	},
+	heroInner: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		gap: 16,
+	},
+	heroLogoWrap: {
+		width: 74,
+		height: 74,
+		borderRadius: 22,
+		backgroundColor: 'rgba(255,255,255,0.08)',
+		alignItems: 'center',
+		justifyContent: 'center',
+	},
+	heroLogo: {
+		width: 54,
+		height: 54,
+	},
+	heroCopy: {
+		flex: 1,
+		gap: 6,
+	},
+	heroTitle: {
+		fontWeight: '700',
+	},
+	heroSubtitle: {
+		lineHeight: 20,
+	},
+	heroBadges: {
+		flexDirection: 'row',
+		flexWrap: 'wrap',
+		gap: 8,
+		marginTop: 14,
+	},
+	heroBadge: {
+		paddingHorizontal: 12,
+		paddingVertical: 7,
+		borderRadius: 999,
 	},
 });

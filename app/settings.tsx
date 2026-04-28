@@ -76,10 +76,12 @@ export default function SettingsScreen() {
 		setPreferredStreamQuality,
 		autoplaySimilarOnQueueEnd,
 		setAutoplaySimilarOnQueueEnd,
-		downloadLocationMode,
-		customDownloadDirectoryName,
-		setCustomDownloadDirectory,
-		resetDownloadLocation,
+	downloadLocationMode,
+	musicDownloadDirectoryName,
+	customDownloadDirectoryName,
+	setMusicDownloadDirectory,
+	setCustomDownloadDirectory,
+	resetDownloadLocation,
 	} = useSettingsStore(
 		useShallow((state) => ({
 			themePreference: state.themePreference,
@@ -101,7 +103,9 @@ export default function SettingsScreen() {
 			autoplaySimilarOnQueueEnd: state.autoplaySimilarOnQueueEnd,
 			setAutoplaySimilarOnQueueEnd: state.setAutoplaySimilarOnQueueEnd,
 			downloadLocationMode: state.downloadLocationMode,
+			musicDownloadDirectoryName: state.musicDownloadDirectoryName,
 			customDownloadDirectoryName: state.customDownloadDirectoryName,
+			setMusicDownloadDirectory: state.setMusicDownloadDirectory,
 			setCustomDownloadDirectory: state.setCustomDownloadDirectory,
 			resetDownloadLocation: state.resetDownloadLocation,
 		}))
@@ -201,7 +205,9 @@ export default function SettingsScreen() {
 	};
 
 	const downloadLocationLabel =
-		customDownloadDirectoryName ?? (downloadLocationMode === 'music' ? 'Music folder' : 'Selected folder');
+		downloadLocationMode === 'music'
+			? musicDownloadDirectoryName ?? 'Music folder'
+			: customDownloadDirectoryName ?? 'Selected folder';
 
 	const handleSelectDownloadLocation = useCallback(
 		async (selection: string) => {
@@ -213,7 +219,7 @@ export default function SettingsScreen() {
 					return;
 				}
 
-				setCustomDownloadDirectory(result.data.uri, result.data.name);
+				setMusicDownloadDirectory(result.data.uri, result.data.name);
 				success(
 					'Download location saved',
 					`${result.data.name} will be used as the default download directory`
@@ -240,7 +246,12 @@ export default function SettingsScreen() {
 				success('Download location reset', 'Downloads will use the Music folder again');
 			}
 		},
-		[resetDownloadLocation, setCustomDownloadDirectory, success]
+		[
+			resetDownloadLocation,
+			setCustomDownloadDirectory,
+			setMusicDownloadDirectory,
+			success,
+		]
 	);
 
 	const downloadLocationGroups = useMemo(

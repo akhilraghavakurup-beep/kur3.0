@@ -110,6 +110,26 @@ async function resolveExternalDirectory(
 		return err(new Error('External download location is only supported on Android'));
 	}
 
+	if (config.mode === 'music') {
+		const savedMusicDirectoryUri = useSettingsStore.getState().musicDownloadDirectoryUri;
+		const savedMusicDirectoryName = useSettingsStore.getState().musicDownloadDirectoryName;
+
+		if (savedMusicDirectoryUri) {
+			return ok({
+				uri: savedMusicDirectoryUri,
+				name: savedMusicDirectoryName ?? 'Music',
+			});
+		}
+
+		const result = await permissionService.requestMusicDirectoryPermission();
+		if (result.success) {
+			useSettingsStore
+				.getState()
+				.setMusicDownloadDirectory(result.data.uri, result.data.name);
+		}
+		return result;
+	}
+
 	if (config.customDirectoryUri) {
 		return ok({
 			uri: config.customDirectoryUri,
@@ -117,18 +137,7 @@ async function resolveExternalDirectory(
 		});
 	}
 
-	if (config.mode === 'custom') {
-		if (!config.customDirectoryUri) {
-			return err(new Error('No custom download folder selected'));
-		}
-
-		return ok({
-			uri: config.customDirectoryUri,
-			name: config.customDirectoryName ?? 'Selected folder',
-		});
-	}
-
-	const result = await permissionService.requestMusicDirectoryPermission();
+	const result = await permissionService.requestDirectoryPermission();
 	if (result.success) {
 		useSettingsStore.getState().setCustomDownloadDirectory(result.data.uri, result.data.name);
 	}
