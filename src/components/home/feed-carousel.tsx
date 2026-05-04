@@ -32,27 +32,27 @@ export const FeedCarousel = memo(function FeedCarousel({ section }: FeedCarousel
 	useEffect(() => {
 		glowPulse.value = withRepeat(
 			withSequence(
-				withTiming(1, { duration: 1400 }),
-				withTiming(0.55, { duration: 1400 })
+				withTiming(1, { duration: 1200 }),
+				withTiming(0.72, { duration: 1200 })
 			),
 			-1,
 			true
 		);
 		glowSweep.value = withRepeat(
-			withTiming(1, { duration: 2600 }),
+			withTiming(1, { duration: 2200 }),
 			-1,
 			true
 		);
 	}, [glowPulse, glowSweep]);
 
 	const glowStyle = useAnimatedStyle(() => ({
-		opacity: glowPulse.value,
-		transform: [{ scale: 1 + (1 - glowPulse.value) * 0.02 }],
+		opacity: 0.22 + glowPulse.value * 0.18,
+		transform: [{ scale: 1 + (glowPulse.value - 0.72) * 0.045 }],
 	}));
 
 	const sweepStyle = useAnimatedStyle(() => ({
-		transform: [{ translateX: (glowSweep.value * 2 - 1) * 280 }],
-		opacity: 0.18 + glowPulse.value * 0.22,
+		transform: [{ translateX: (glowSweep.value * 2 - 1) * 180 }],
+		opacity: 0.22 + (glowPulse.value - 0.72) * 0.18,
 	}));
 
 	const trackItems = useMemo(
@@ -123,7 +123,7 @@ export const FeedCarousel = memo(function FeedCarousel({ section }: FeedCarousel
 						colors={[
 							'transparent',
 							`${colors.primary}00`,
-							`${colors.primary}5A`,
+							`${colors.primary}66`,
 							`${colors.primary}00`,
 							'transparent',
 						]}
@@ -235,16 +235,16 @@ const styles = StyleSheet.create({
 	},
 	glow: {
 		position: 'absolute',
-		top: 2,
-		right: 2,
-		bottom: 2,
-		left: 2,
+		top: 1,
+		right: 1,
+		bottom: 1,
+		left: 1,
 		borderRadius: 32,
-		borderWidth: 1,
-		opacity: 0.45,
-		elevation: 10,
-		shadowOpacity: 0.24,
-		shadowRadius: 18,
+		borderWidth: 2,
+		opacity: 0.48,
+		elevation: 12,
+		shadowOpacity: 0.3,
+		shadowRadius: 22,
 		shadowOffset: {
 			width: 0,
 			height: 0,
@@ -252,16 +252,16 @@ const styles = StyleSheet.create({
 	},
 	sweepMask: {
 		position: 'absolute',
-		top: 0,
-		right: 0,
-		bottom: 0,
-		left: 0,
-		borderRadius: 32,
+		top: '44%',
+		right: -56,
+		left: -56,
+		height: 18,
+		borderRadius: 999,
 		overflow: 'hidden',
 	},
 	sweepGradient: {
-		width: '180%',
-		height: '100%',
+		width: '220%',
+		height: 18,
 	},
 	container: {
 		gap: 12,

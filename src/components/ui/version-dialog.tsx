@@ -4,7 +4,7 @@
  * Material 3 styled dialog displaying app version information.
  */
 
-import { StyleSheet, View, Platform, Image } from 'react-native';
+import { StyleSheet, View, Platform } from 'react-native';
 import { Dialog, Portal, Text, Button, Divider } from 'react-native-paper';
 import Constants from 'expo-constants';
 import { useAppTheme, M3Shapes } from '@/lib/theme';
@@ -66,11 +66,14 @@ export function VersionDialog({ visible, onDismiss }: VersionDialogProps) {
 								{ backgroundColor: colors.primaryContainer },
 							]}
 						>
-							<Image
-								source={require('../../../assets/images/icon.png')}
-								style={styles.logo}
-								resizeMode={'contain'}
-							/>
+							<View style={styles.badgeTextWrap}>
+								<Text variant={'labelLarge'} style={[styles.badgeText, { color: colors.onPrimaryContainer }]}>
+									Kur
+								</Text>
+								<Text variant={'bodySmall'} style={[styles.badgeSubText, { color: colors.onPrimaryContainer }]}>
+									Music
+								</Text>
+							</View>
 						</View>
 						<View style={styles.headerText}>
 							<Text variant={'headlineSmall'} style={{ color: colors.onSurface }}>
@@ -140,9 +143,17 @@ const styles = StyleSheet.create({
 		justifyContent: 'center',
 		overflow: 'hidden',
 	},
-	logo: {
-		width: 56,
-		height: 56,
+	badgeTextWrap: {
+		alignItems: 'center',
+		justifyContent: 'center',
+	},
+	badgeText: {
+		fontWeight: '800',
+		letterSpacing: 0.6,
+	},
+	badgeSubText: {
+		fontWeight: '700',
+		letterSpacing: 0.8,
 	},
 	headerText: {
 		flex: 1,

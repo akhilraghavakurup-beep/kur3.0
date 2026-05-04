@@ -41,7 +41,6 @@ export type HomeFeedPrioritySection =
 	| 'fresh-hits';
 
 export const DEFAULT_HOME_CONTENT_PREFERENCES: HomeContentPreference[] = [
-	'Bollywood',
 	'Malayalam',
 	'Tamil',
 ];
@@ -133,14 +132,14 @@ export const useSettingsStore = create<SettingsState>()(
 			homeContentPreferences: DEFAULT_HOME_CONTENT_PREFERENCES,
 			homeFeedPriority: DEFAULT_HOME_FEED_PRIORITY,
 			defaultLibraryTab: 'songs',
-			accentColor: null,
+			accentColor: '#7C3AED',
 			tabOrder: DEFAULT_TAB_ORDER,
 			enabledTabs: DEFAULT_ENABLED_TABS,
 			openPlayerOnTrackClick: false,
 			showProviderLabel: true,
 			progressBarStyle: 'expressive',
 			playerBackground: 'artwork-blur',
-			uiStyle: 'glow-flow',
+			uiStyle: 'neo',
 			preferredStreamQuality: 'high',
 			autoplaySimilarOnQueueEnd: true,
 			downloadLocationMode: 'music',
@@ -309,14 +308,14 @@ export const useSettingsStore = create<SettingsState>()(
 					homeContentPreferences: DEFAULT_HOME_CONTENT_PREFERENCES,
 					homeFeedPriority: DEFAULT_HOME_FEED_PRIORITY,
 					defaultLibraryTab: 'songs',
-					accentColor: null,
+					accentColor: '#7C3AED',
 					tabOrder: DEFAULT_TAB_ORDER,
 					enabledTabs: DEFAULT_ENABLED_TABS,
 					openPlayerOnTrackClick: false,
 					showProviderLabel: true,
 					progressBarStyle: 'expressive',
 					playerBackground: 'artwork-blur',
-					uiStyle: 'glow-flow',
+					uiStyle: 'neo',
 					preferredStreamQuality: 'high',
 					autoplaySimilarOnQueueEnd: true,
 					downloadLocationMode: 'music',
@@ -329,7 +328,22 @@ export const useSettingsStore = create<SettingsState>()(
 		}),
 		{
 			name: 'aria-settings-storage',
+			version: 2,
 			storage: createJSONStorage(() => customStorage),
+			migrate: (persistedState) => {
+				const state = persistedState as Partial<SettingsState> | undefined;
+				const nextHomeContentPreferences = state?.homeContentPreferences
+					?.filter((preference) => preference !== 'Bollywood');
+				return {
+					...state,
+					accentColor: state?.accentColor ?? '#7C3AED',
+					uiStyle: state?.uiStyle ?? 'neo',
+					homeContentPreferences:
+						nextHomeContentPreferences && nextHomeContentPreferences.length > 0
+							? nextHomeContentPreferences
+							: DEFAULT_HOME_CONTENT_PREFERENCES,
+				};
+			},
 		}
 	)
 );
