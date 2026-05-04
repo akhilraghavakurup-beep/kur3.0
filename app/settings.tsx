@@ -466,7 +466,7 @@ export default function SettingsScreen() {
 					/>
 					<SettingsItem icon={InfoIcon} title={'Developed by'} subtitle={'Kurup'} />
 					<SettingsItem icon={InfoIcon} title={'Tested by'} subtitle={'Nemo'} />
-					<SettingsItem icon={InfoIcon} title={'Build'} subtitle={"Aj's REQUEST"} />
+					<SettingsItem icon={InfoIcon} title={'Build'} subtitle={"KurMon's hope"} />
 				</SettingsSection>
 			</PlayerAwareScrollView>
 

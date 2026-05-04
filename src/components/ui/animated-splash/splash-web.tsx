@@ -63,7 +63,7 @@ export function SplashWeb({
 			<View style={styles.content}>
 				<View style={styles.iconWrapper}>
 					<Image
-						source={require('@/assets/images/kur-logo.png')}
+						source={require('@/assets/images/splash-icon.png')}
 						style={{ width: ICON_SIZE, height: ICON_SIZE }}
 						resizeMode={'contain'}
 					/>

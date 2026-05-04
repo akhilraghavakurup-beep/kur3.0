@@ -151,7 +151,7 @@ export default function HomeScreen() {
 							<View style={styles.heroInner}>
 								<View style={styles.heroLogoWrap}>
 									<Image
-										source={require('../../assets/images/kur-mark.png')}
+										source={require('../../assets/images/icon.png')}
 										style={styles.heroLogo}
 										contentFit={'contain'}
 									/>

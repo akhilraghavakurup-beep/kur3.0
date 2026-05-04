@@ -67,7 +67,7 @@ export function VersionDialog({ visible, onDismiss }: VersionDialogProps) {
 							]}
 						>
 							<Image
-								source={require('../../../assets/images/kur-logo.png')}
+								source={require('../../../assets/images/icon.png')}
 								style={styles.logo}
 								resizeMode={'contain'}
 							/>
@@ -92,7 +92,7 @@ export function VersionDialog({ visible, onDismiss }: VersionDialogProps) {
 						/>
 						<InfoRow icon={CodeIcon} label={'Developed by'} value={'Kurup'} />
 						<InfoRow icon={CodeIcon} label={'Tested by'} value={'Nemo'} />
-						<InfoRow icon={CodeIcon} label={'Build'} value={"Aj's REQUEST"} />
+						<InfoRow icon={CodeIcon} label={'Build'} value={"KurMon's hope"} />
 						<InfoRow icon={CodeIcon} label={'Expo SDK'} value={expoSdkVersion} />
 						<InfoRow icon={SmartphoneIcon} label={'Platform'} value={platformVersion} />
 						<InfoRow

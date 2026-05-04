@@ -4,7 +4,7 @@
                  "slug": "kurmusic",
                  "version":  "3.1",
                  "orientation":  "portrait",
-                 "icon":  "./assets/images/kur-mark.png",
+                 "icon":  "./assets/images/icon.png",
                  "scheme": "kurmusic",
                  "userInterfaceStyle":  "automatic",
                  "newArchEnabled":  true,
@@ -22,7 +22,7 @@
                                  "package":  "com.aria.music.app",
                                  "adaptiveIcon":  {
                                                       "backgroundColor":  "#E6F4FE",
-                                                      "foregroundImage":  "./assets/images/kur-mark.png",
+                                                      "foregroundImage":  "./assets/images/android-icon-foreground.png",
                                                       "backgroundImage":  "./assets/images/android-icon-background.png",
                                                       "monochromeImage":  "./assets/images/android-icon-monochrome.png"
                                                   },
@@ -38,7 +38,7 @@
                                  [
                                      "expo-splash-screen",
                                      {
-                                         "image":  "./assets/images/kur-logo.png",
+                                         "image":  "./assets/images/splash-icon.png",
                                          "imageWidth":  220,
                                          "resizeMode":  "contain",
                                          "backgroundColor":  "#F5E6DC",

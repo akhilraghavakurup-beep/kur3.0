@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
-import { View, StyleSheet, Pressable } from 'react-native';
+import { View, StyleSheet, Pressable, TextInput } from 'react-native';
 import { PlayerAwareScrollView } from '@/src/components/ui/player-aware-scroll-view';
 import { PageLayout } from '@/src/components/ui/page-layout';
 import {
