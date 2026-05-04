@@ -35,6 +35,7 @@ import {
 	THEME_OPTIONS,
 	DEFAULT_TAB_OPTIONS,
 	PLAYER_BACKGROUND_OPTIONS,
+	UI_STYLE_OPTIONS,
 	STREAM_QUALITY_OPTIONS,
 } from '@/lib/settings-config';
 import { useLibraryStore } from '@application/state/library-store';
@@ -72,6 +73,8 @@ export default function SettingsScreen() {
 		setProgressBarStyle,
 		playerBackground,
 		setPlayerBackground,
+		uiStyle,
+		setUIStyle,
 		preferredStreamQuality,
 		setPreferredStreamQuality,
 		autoplaySimilarOnQueueEnd,
@@ -98,6 +101,8 @@ export default function SettingsScreen() {
 			setProgressBarStyle: state.setProgressBarStyle,
 			playerBackground: state.playerBackground,
 			setPlayerBackground: state.setPlayerBackground,
+			uiStyle: state.uiStyle,
+			setUIStyle: state.setUIStyle,
 			preferredStreamQuality: state.preferredStreamQuality,
 			setPreferredStreamQuality: state.setPreferredStreamQuality,
 			autoplaySimilarOnQueueEnd: state.autoplaySimilarOnQueueEnd,
@@ -322,6 +327,14 @@ export default function SettingsScreen() {
 						onValueChange={setDefaultTab}
 						portalName={'default-tab-select'}
 					/>
+					<SettingsSelect
+						icon={PaintbrushIcon}
+						title={'UI style'}
+						options={UI_STYLE_OPTIONS}
+						value={uiStyle}
+						onValueChange={setUIStyle}
+						portalName={'ui-style-select'}
+					/>
 					<TabOrderSetting />
 					<SettingsItem
 						icon={TagIcon}
@@ -457,6 +470,11 @@ export default function SettingsScreen() {
 				</SettingsSection>
 
 				<SettingsSection title={'About'}>
+					<SettingsItem
+						icon={InfoIcon}
+						title={'Kur Music'}
+						subtitle={'Music powered by Kurmon'}
+					/>
 					<SettingsItem
 						icon={InfoIcon}
 						title={'Version'}

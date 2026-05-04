@@ -344,7 +344,7 @@ export class JioSaavnClient {
 			.map((value) => value.trim().toLowerCase())
 			.filter(Boolean);
 
-		return `L=${encodeURIComponent(normalized.join(','))}`;
+		return `L=${normalized.join('%2C')}`;
 	}
 
 	private _usesDirectWebApi(): boolean {

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef } from 'react';
+﻿import { useCallback, useMemo, useRef } from 'react';
 import {
 	RefreshControl,
 	StyleSheet,
@@ -8,7 +8,6 @@ import {
 	type NativeScrollEvent,
 } from 'react-native';
 import { AlertCircleIcon, MusicIcon } from 'lucide-react-native';
-import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Text } from 'react-native-paper';
 import { PageLayout } from '@/src/components/ui/page-layout';
@@ -150,18 +149,16 @@ export default function HomeScreen() {
 							/>
 							<View style={styles.heroInner}>
 								<View style={styles.heroLogoWrap}>
-									<Image
-										source={require('../../assets/images/icon.png')}
-										style={styles.heroLogo}
-										contentFit={'contain'}
-									/>
+									<Text variant={'headlineMedium'} style={{ color: colors.onSurface }}>
+										Music
+									</Text>
 								</View>
 								<View style={styles.heroCopy}>
 									<Text variant={'headlineSmall'} style={[styles.heroTitle, { color: colors.onSurface }]}>
-										Kur Music
+										Music powered by Kurmon
 									</Text>
 									<Text variant={'bodyMedium'} style={[styles.heroSubtitle, { color: colors.onSurfaceVariant }]}>
-										BlackHole-style shelves from JioSaavn, driven by your saved language cookies.
+										Direct JioSaavn shelves from your saved language preferences.
 									</Text>
 								</View>
 							</View>
@@ -226,10 +223,6 @@ const styles = StyleSheet.create({
 		alignItems: 'center',
 		justifyContent: 'center',
 	},
-	heroLogo: {
-		width: 54,
-		height: 54,
-	},
 	heroCopy: {
 		flex: 1,
 		gap: 6,
@@ -252,3 +245,4 @@ const styles = StyleSheet.create({
 		borderRadius: 999,
 	},
 });
+

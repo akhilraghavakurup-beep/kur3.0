@@ -20,6 +20,7 @@ import type {
 	HomeContentPreference,
 	LibraryTabId,
 	PlayerBackground,
+	UIStyle,
 } from '@/src/application/state/settings-store';
 import type { StreamQuality } from '@/src/domain/value-objects/audio-source';
 
@@ -76,6 +77,14 @@ export const PLAYER_BACKGROUND_OPTIONS: {
 	{ value: 'artwork-blur', label: 'Blurred', icon: ImageIcon },
 	{ value: 'artwork-solid', label: 'Solid', icon: PaletteIcon },
 	{ value: 'theme-color', label: 'Themed', icon: SwatchBookIcon },
+];
+
+export const UI_STYLE_OPTIONS: { value: UIStyle; label: string; icon: LucideIcon }[] = [
+	{ value: 'clean', label: 'Clean', icon: MonitorSmartphoneIcon },
+	{ value: 'glow-flow', label: 'Glow Flow', icon: SwatchBookIcon },
+	{ value: 'glass', label: 'Glass', icon: ImageIcon },
+	{ value: 'bold', label: 'Bold', icon: PaletteIcon },
+	{ value: 'neo', label: 'Neo', icon: SunIcon },
 ];
 
 export const STREAM_QUALITY_OPTIONS: {

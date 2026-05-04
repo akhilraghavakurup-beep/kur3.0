@@ -54,6 +54,17 @@ const BLACKHOLE_COLLECTION_ORDER = [
 	'artist_recos',
 ] as const;
 
+const BLACKHOLE_SECTION_PRIORITY = [
+	'jiosaavn-new-trending',
+	'jiosaavn-charts',
+	'jiosaavn-new-albums',
+	'jiosaavn-tag-mixes',
+	'jiosaavn-top-playlists',
+	'jiosaavn-radio',
+	'jiosaavn-city-mod',
+	'jiosaavn-artist-recos',
+] as const;
+
 const matchesTitle =
 	(...patterns: string[]) =>
 	(title: string) =>
@@ -184,6 +195,18 @@ function sortItemsForPreferences(items: unknown[]): unknown[] {
 			return scoreDiff;
 		}
 		return 0;
+	});
+}
+
+function filterItemsForPreferences(items: unknown[]): unknown[] {
+	const preferredLanguages = getPreferredLanguages();
+	return items.filter((item) => {
+		const itemLanguages = getItemLanguageSet(item);
+		if (itemLanguages.size === 0) {
+			return true;
+		}
+
+		return preferredLanguages.some((language) => itemLanguages.has(language));
 	});
 }
 
@@ -466,6 +489,9 @@ function dedupeSections(sections: FeedSection[]): FeedSection[] {
 
 function prioritizeSections(sections: FeedSection[]): FeedSection[] {
 	const configuredPriority = useSettingsStore.getState().homeFeedPriority;
+	const blackholePriority = new Map(
+		BLACKHOLE_SECTION_PRIORITY.map((key, index) => [key, index] as const)
+	);
 	const sectionToPriorityKey = (section: FeedSection): HomeFeedPrioritySection | null => {
 		switch (section.id) {
 			case 'jiosaavn-new-trending':
@@ -493,6 +519,21 @@ function prioritizeSections(sections: FeedSection[]): FeedSection[] {
 	const priorityMap = new Map(configuredPriority.map((key, index) => [key, index]));
 
 	return [...sections].sort((left, right) => {
+		const leftBlackhole = blackholePriority.get(left.id);
+		const rightBlackhole = blackholePriority.get(right.id);
+
+		if (leftBlackhole !== undefined && rightBlackhole !== undefined) {
+			return leftBlackhole - rightBlackhole;
+		}
+
+		if (leftBlackhole !== undefined) {
+			return -1;
+		}
+
+		if (rightBlackhole !== undefined) {
+			return 1;
+		}
+
 		const leftPriority = priorityMap.get(sectionToPriorityKey(left) ?? '');
 		const rightPriority = priorityMap.get(sectionToPriorityKey(right) ?? '');
 
@@ -531,7 +572,7 @@ async function buildHomeFeed(client: JioSaavnClient): Promise<HomeFeedData> {
 				candidate.titleMatcher(title)
 		);
 
-		const scopedItems = definition?.key === 'new_trending' ? sortItemsForPreferences(items) : items;
+		const scopedItems = sortItemsForPreferences(filterItemsForPreferences(items));
 		const mappedItems = definition ? definition.mapItems(scopedItems) : mapAnyFeedItems(scopedItems);
 		const section = createSection(
 			moduleKey,

@@ -17,6 +17,7 @@ export type ProgressBarStyle =
 	| 'pulse-dots';
 export type PlayerBackground = 'artwork-blur' | 'artwork-solid' | 'theme-color';
 export type DownloadLocationMode = 'music' | 'custom';
+export type UIStyle = 'clean' | 'glow-flow' | 'glass' | 'bold' | 'neo';
 export type HomeContentPreference =
 	| 'All languages'
 	| 'Bollywood'
@@ -72,6 +73,7 @@ interface SettingsState {
 	showProviderLabel: boolean;
 	progressBarStyle: ProgressBarStyle;
 	playerBackground: PlayerBackground;
+	uiStyle: UIStyle;
 	preferredStreamQuality: StreamQuality;
 	autoplaySimilarOnQueueEnd: boolean;
 	downloadLocationMode: DownloadLocationMode;
@@ -101,6 +103,7 @@ interface SettingsState {
 	setShowProviderLabel: (enabled: boolean) => void;
 	setProgressBarStyle: (style: ProgressBarStyle) => void;
 	setPlayerBackground: (background: PlayerBackground) => void;
+	setUIStyle: (style: UIStyle) => void;
 	setPreferredStreamQuality: (quality: StreamQuality) => void;
 	setAutoplaySimilarOnQueueEnd: (enabled: boolean) => void;
 	setDownloadLocationMode: (mode: DownloadLocationMode) => void;
@@ -137,6 +140,7 @@ export const useSettingsStore = create<SettingsState>()(
 			showProviderLabel: true,
 			progressBarStyle: 'expressive',
 			playerBackground: 'artwork-blur',
+			uiStyle: 'glow-flow',
 			preferredStreamQuality: 'high',
 			autoplaySimilarOnQueueEnd: true,
 			downloadLocationMode: 'music',
@@ -265,6 +269,9 @@ export const useSettingsStore = create<SettingsState>()(
 			setPlayerBackground: (background: PlayerBackground) => {
 				set({ playerBackground: background });
 			},
+			setUIStyle: (style: UIStyle) => {
+				set({ uiStyle: style });
+			},
 			setPreferredStreamQuality: (quality: StreamQuality) => {
 				set({ preferredStreamQuality: quality });
 			},
@@ -309,6 +316,7 @@ export const useSettingsStore = create<SettingsState>()(
 					showProviderLabel: true,
 					progressBarStyle: 'expressive',
 					playerBackground: 'artwork-blur',
+					uiStyle: 'glow-flow',
 					preferredStreamQuality: 'high',
 					autoplaySimilarOnQueueEnd: true,
 					downloadLocationMode: 'music',
@@ -403,6 +411,10 @@ export const useSetProgressBarStyle = () => useSettingsStore((state) => state.se
 export const usePlayerBackground = () => useSettingsStore((state) => state.playerBackground);
 
 export const useSetPlayerBackground = () => useSettingsStore((state) => state.setPlayerBackground);
+
+export const useUIStyle = () => useSettingsStore((state) => state.uiStyle);
+
+export const useSetUIStyle = () => useSettingsStore((state) => state.setUIStyle);
 
 export const usePreferredStreamQuality = () =>
 	useSettingsStore((state) => state.preferredStreamQuality);
