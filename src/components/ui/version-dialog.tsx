@@ -4,7 +4,7 @@
  * Material 3 styled dialog displaying app version information.
  */
 
-import { StyleSheet, View, Platform } from 'react-native';
+import { StyleSheet, View, Platform, Image } from 'react-native';
 import { Dialog, Portal, Text, Button, Divider } from 'react-native-paper';
 import Constants from 'expo-constants';
 import { useAppTheme, M3Shapes } from '@/lib/theme';
@@ -23,11 +23,6 @@ interface InfoRowProps {
 	readonly value: string;
 }
 
-interface InfoCardProps {
-	readonly title: string;
-	readonly children: React.ReactNode;
-}
-
 function InfoRow({ icon: IconComponent, label, value }: InfoRowProps) {
 	const { colors } = useAppTheme();
 
@@ -40,19 +35,6 @@ function InfoRow({ icon: IconComponent, label, value }: InfoRowProps) {
 			<Text variant={'bodyMedium'} style={[styles.value, { color: colors.onSurface }]}>
 				{value}
 			</Text>
-		</View>
-	);
-}
-
-function InfoCard({ title, children }: InfoCardProps) {
-	const { colors } = useAppTheme();
-
-	return (
-		<View style={[styles.card, { backgroundColor: colors.surfaceContainerHighest }]}>
-			<Text variant={'labelLarge'} style={[styles.cardTitle, { color: colors.onSurfaceVariant }]}>
-				{title}
-			</Text>
-			{children}
 		</View>
 	);
 }
@@ -77,57 +59,46 @@ export function VersionDialog({ visible, onDismiss }: VersionDialogProps) {
 			>
 				<Dialog.Title style={{ color: colors.onSurface }}>About Kur Music</Dialog.Title>
 				<Dialog.Content>
-					<View style={styles.cardGrid}>
-						<InfoCard title={'Brand'}>
-							<View style={styles.brandRow}>
-								<View style={[styles.iconContainer, { backgroundColor: colors.primaryContainer }]}>
-									<View style={styles.badgeTextWrap}>
-										<Text
-											variant={'labelLarge'}
-											style={[styles.badgeText, { color: colors.onPrimaryContainer }]}
-										>
-											Kur
-										</Text>
-										<Text
-											variant={'bodySmall'}
-											style={[styles.badgeSubText, { color: colors.onPrimaryContainer }]}
-										>
-											Music
-										</Text>
-									</View>
-								</View>
-								<View style={styles.brandText}>
-									<Text variant={'headlineSmall'} style={{ color: colors.onSurface }}>
-										Kur Music
-									</Text>
-									<Text variant={'bodyMedium'} style={{ color: colors.onSurfaceVariant }}>
-										Music Player
-									</Text>
-								</View>
-							</View>
-						</InfoCard>
-
-						<InfoCard title={'App'}>
-							<View style={styles.infoSection}>
-								<InfoRow icon={PackageIcon} label={'Version'} value={appVersion} />
-								<InfoRow icon={CodeIcon} label={'Build'} value={"KurMon's hope"} />
-								<InfoRow icon={SmartphoneIcon} label={'Platform'} value={platformVersion} />
-								<InfoRow
-									icon={CpuIcon}
-									label={'Architecture'}
-									value={Platform.OS === 'ios' ? 'arm64' : 'arm64-v8a'}
-								/>
-							</View>
-						</InfoCard>
-
-						<InfoCard title={'Credits'}>
-							<View style={styles.infoSection}>
-								<InfoRow icon={CodeIcon} label={'Developed by'} value={'Kurup'} />
-								<InfoRow icon={CodeIcon} label={'Tested by'} value={'Nemo'} />
-								<InfoRow icon={CodeIcon} label={'Expo SDK'} value={expoSdkVersion} />
-							</View>
-						</InfoCard>
+					<View style={styles.headerSection}>
+						<View
+							style={[
+								styles.iconContainer,
+								{ backgroundColor: colors.primaryContainer },
+							]}
+						>
+							<Image
+								source={require('../../../assets/images/icon.png')}
+								style={styles.logo}
+								resizeMode={'contain'}
+							/>
+						</View>
+						<View style={styles.headerText}>
+							<Text variant={'headlineSmall'} style={{ color: colors.onSurface }}>
+								Kur Music
+							</Text>
+							<Text variant={'bodyMedium'} style={{ color: colors.onSurfaceVariant }}>
+								Music Player
+							</Text>
+						</View>
 					</View>
+
+					<Divider style={[styles.divider, { backgroundColor: colors.outlineVariant }]} />
+
+					<View style={styles.infoSection}>
+						<InfoRow icon={PackageIcon} label={'Version'} value={appVersion} />
+						<InfoRow icon={CodeIcon} label={'Developed by'} value={'Kurup'} />
+						<InfoRow icon={CodeIcon} label={'Tested by'} value={'Nemo'} />
+						<InfoRow icon={CodeIcon} label={'Build'} value={"KurMon's hope"} />
+						<InfoRow icon={CodeIcon} label={'Expo SDK'} value={expoSdkVersion} />
+						<InfoRow icon={SmartphoneIcon} label={'Platform'} value={platformVersion} />
+						<InfoRow
+							icon={CpuIcon}
+							label={'Architecture'}
+							value={Platform.OS === 'ios' ? 'arm64' : 'arm64-v8a'}
+						/>
+					</View>
+
+					<Divider style={[styles.divider, { backgroundColor: colors.outlineVariant }]} />
 
 					<Text
 						variant={'bodySmall'}
@@ -151,22 +122,11 @@ const styles = StyleSheet.create({
 	dialog: {
 		borderRadius: M3Shapes.extraLarge,
 	},
-	cardGrid: {
-		gap: 12,
-	},
-	card: {
-		borderRadius: 20,
-		padding: 16,
-		gap: 12,
-	},
-	cardTitle: {
-		letterSpacing: 0.6,
-		textTransform: 'uppercase',
-	},
-	brandRow: {
+	headerSection: {
 		flexDirection: 'row',
 		alignItems: 'center',
-		gap: 14,
+		gap: 16,
+		marginBottom: 16,
 	},
 	iconContainer: {
 		width: 64,
@@ -176,17 +136,15 @@ const styles = StyleSheet.create({
 		justifyContent: 'center',
 		overflow: 'hidden',
 	},
-	badgeTextWrap: {
-		alignItems: 'center',
-		justifyContent: 'center',
+	logo: {
+		width: 56,
+		height: 56,
 	},
-	badgeText: {
-		fontWeight: '800',
-		letterSpacing: 0.6,
+	headerText: {
+		flex: 1,
 	},
-	badgeSubText: {
-		fontWeight: '700',
-		letterSpacing: 0.8,
+	divider: {
+		marginVertical: 16,
 	},
 	infoSection: {
 		gap: 12,

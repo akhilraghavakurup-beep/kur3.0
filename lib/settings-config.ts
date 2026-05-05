@@ -43,7 +43,6 @@ export const HOME_CONTENT_PREFERENCE_OPTIONS: {
 	icon: LucideIcon;
 }[] = [
 	{ value: 'All languages', label: 'All languages', icon: NewspaperIcon },
-	{ value: 'Bollywood', label: 'Bollywood', icon: MusicIcon },
 	{ value: 'Bengali', label: 'Bengali', icon: MusicIcon },
 	{ value: 'English', label: 'English', icon: MusicIcon },
 	{ value: 'Gujarati', label: 'Gujarati', icon: MusicIcon },
