@@ -7,6 +7,7 @@ import type {
 } from '@plugins/core/interfaces/home-feed-provider';
 import { useHomeFeedStore } from '../state/home-feed-store';
 import { getLogger } from '@shared/services/logger';
+import { waitForSettingsHydration } from '../state/settings-store';
 
 const logger = getLogger('HomeFeedService');
 
@@ -66,6 +67,7 @@ export class HomeFeedService {
 
 	async fetchHomeFeed({ force = false } = {}): Promise<void> {
 		await this._readyPromise;
+		await waitForSettingsHydration();
 		if (this._providers.size === 0) return;
 
 		const { lastFetchedAt } = useHomeFeedStore.getState();
@@ -84,6 +86,7 @@ export class HomeFeedService {
 	}
 
 	async refresh(): Promise<void> {
+		await waitForSettingsHydration();
 		if (this._providers.size === 0) return;
 
 		useHomeFeedStore.setState({ isRefreshing: true });
@@ -92,6 +95,7 @@ export class HomeFeedService {
 	}
 
 	async applyFilter(chipText: string, chipIndex: number): Promise<void> {
+		await waitForSettingsHydration();
 		if (this._providers.size === 0) return;
 
 		useHomeFeedStore.setState({ isLoading: true, activeFilterIndex: chipIndex });
@@ -131,6 +135,7 @@ export class HomeFeedService {
 	}
 
 	async loadMore(): Promise<void> {
+		await waitForSettingsHydration();
 		if (this._providers.size === 0) return;
 
 		if (useHomeFeedStore.getState().isLoadingMore) return;
@@ -172,6 +177,7 @@ export class HomeFeedService {
 
 	async getPlaylistTracks(playlistId: string): Promise<Result<PlaylistTracksPage, Error>> {
 		await this._readyPromise;
+		await waitForSettingsHydration();
 
 		for (const [id, state] of this._providers) {
 			const result = await state.operations.getPlaylistTracks(playlistId);
@@ -184,6 +190,7 @@ export class HomeFeedService {
 
 	async loadMorePlaylistTracks(): Promise<Result<PlaylistTracksPage, Error>> {
 		await this._readyPromise;
+		await waitForSettingsHydration();
 
 		for (const [id, state] of this._providers) {
 			const result = await state.operations.loadMorePlaylistTracks();

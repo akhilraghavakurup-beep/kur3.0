@@ -124,6 +124,11 @@ const customStorage = {
 	},
 };
 
+let resolveHydration: (() => void) | null = null;
+const hydrationPromise = new Promise<void>((resolve) => {
+	resolveHydration = resolve;
+});
+
 export const useSettingsStore = create<SettingsState>()(
 	persist(
 		(set, get) => ({
@@ -330,6 +335,11 @@ export const useSettingsStore = create<SettingsState>()(
 			name: 'aria-settings-storage',
 			version: 2,
 			storage: createJSONStorage(() => customStorage),
+			onRehydrateStorage: () => {
+				return () => {
+					resolveHydration?.();
+				};
+			},
 			migrate: (persistedState) => {
 				const state = persistedState as Partial<SettingsState> | undefined;
 				const nextHomeContentPreferences = state?.homeContentPreferences
@@ -456,3 +466,7 @@ export const useCustomDownloadDirectoryUri = () =>
 
 export const useCustomDownloadDirectoryName = () =>
 	useSettingsStore((state) => state.customDownloadDirectoryName);
+
+export function waitForSettingsHydration(): Promise<void> {
+	return hydrationPromise;
+}
