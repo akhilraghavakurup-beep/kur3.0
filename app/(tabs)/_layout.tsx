@@ -4,11 +4,10 @@ import { View, Pressable, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { Text, IconButton, Switch } from 'react-native-paper';
-import { LanguagesIcon, RefreshCwIcon, SettingsIcon } from 'lucide-react-native';
+import { LanguagesIcon, SettingsIcon } from 'lucide-react-native';
 import { SettingsBottomSheet } from '@/src/components/settings/settings-bottom-sheet';
 import { SettingsItem } from '@/src/components/settings/settings-item';
 import { useAppTheme, resolveDisplayFont } from '@/lib/theme';
-import { homeFeedService } from '@/src/application/services/home-feed-service';
 import { useActiveDownloadsCount } from '@/src/application/state/download-store';
 import {
 	useHomeContentPreferences,
@@ -210,15 +209,7 @@ function TabHeader({ initialTabId }: { readonly initialTabId: TabId }) {
 				>
 					{title}
 				</Text>
-				<View style={styles.headerActionSpacer}>
-					<IconButton
-						icon={() => (
-							<Icon as={RefreshCwIcon} size={20} color={colors.onSurfaceVariant} />
-						)}
-						onPress={() => homeFeedService.fetchHomeFeed({ force: true })}
-						accessibilityLabel={'Refresh recommendations'}
-					/>
-				</View>
+				<View style={styles.headerActionSpacer} />
 			</View>
 
 			<SettingsBottomSheet

@@ -23,6 +23,11 @@ interface InfoRowProps {
 	readonly value: string;
 }
 
+interface InfoCardProps {
+	readonly title: string;
+	readonly children: React.ReactNode;
+}
+
 function InfoRow({ icon: IconComponent, label, value }: InfoRowProps) {
 	const { colors } = useAppTheme();
 
@@ -35,6 +40,19 @@ function InfoRow({ icon: IconComponent, label, value }: InfoRowProps) {
 			<Text variant={'bodyMedium'} style={[styles.value, { color: colors.onSurface }]}>
 				{value}
 			</Text>
+		</View>
+	);
+}
+
+function InfoCard({ title, children }: InfoCardProps) {
+	const { colors } = useAppTheme();
+
+	return (
+		<View style={[styles.card, { backgroundColor: colors.surfaceContainerHighest }]}>
+			<Text variant={'labelLarge'} style={[styles.cardTitle, { color: colors.onSurfaceVariant }]}>
+				{title}
+			</Text>
+			{children}
 		</View>
 	);
 }
@@ -59,61 +77,65 @@ export function VersionDialog({ visible, onDismiss }: VersionDialogProps) {
 			>
 				<Dialog.Title style={{ color: colors.onSurface }}>About Kur Music</Dialog.Title>
 				<Dialog.Content>
-					<View style={styles.headerSection}>
-						<View
-							style={[
-								styles.iconContainer,
-								{ backgroundColor: colors.primaryContainer },
-							]}
-						>
-							<View style={styles.badgeTextWrap}>
-								<Text variant={'labelLarge'} style={[styles.badgeText, { color: colors.onPrimaryContainer }]}>
-									Kur
-								</Text>
-								<Text variant={'bodySmall'} style={[styles.badgeSubText, { color: colors.onPrimaryContainer }]}>
-									Music
-								</Text>
+					<View style={styles.cardGrid}>
+						<InfoCard title={'Brand'}>
+							<View style={styles.brandRow}>
+								<View style={[styles.iconContainer, { backgroundColor: colors.primaryContainer }]}>
+									<View style={styles.badgeTextWrap}>
+										<Text
+											variant={'labelLarge'}
+											style={[styles.badgeText, { color: colors.onPrimaryContainer }]}
+										>
+											Kur
+										</Text>
+										<Text
+											variant={'bodySmall'}
+											style={[styles.badgeSubText, { color: colors.onPrimaryContainer }]}
+										>
+											Music
+										</Text>
+									</View>
+								</View>
+								<View style={styles.brandText}>
+									<Text variant={'headlineSmall'} style={{ color: colors.onSurface }}>
+										Kur Music
+									</Text>
+									<Text variant={'bodyMedium'} style={{ color: colors.onSurfaceVariant }}>
+										Music Player
+									</Text>
+								</View>
 							</View>
-						</View>
-						<View style={styles.headerText}>
-							<Text variant={'headlineSmall'} style={{ color: colors.onSurface }}>
-								Kur Music
-							</Text>
-							<Text variant={'bodyMedium'} style={{ color: colors.onSurfaceVariant }}>
-								Music Player
-							</Text>
-						</View>
+						</InfoCard>
+
+						<InfoCard title={'App'}>
+							<View style={styles.infoSection}>
+								<InfoRow icon={PackageIcon} label={'Version'} value={appVersion} />
+								<InfoRow icon={CodeIcon} label={'Build'} value={"KurMon's hope"} />
+								<InfoRow icon={SmartphoneIcon} label={'Platform'} value={platformVersion} />
+								<InfoRow
+									icon={CpuIcon}
+									label={'Architecture'}
+									value={Platform.OS === 'ios' ? 'arm64' : 'arm64-v8a'}
+								/>
+							</View>
+						</InfoCard>
+
+						<InfoCard title={'Credits'}>
+							<View style={styles.infoSection}>
+								<InfoRow icon={CodeIcon} label={'Developed by'} value={'Kurup'} />
+								<InfoRow icon={CodeIcon} label={'Tested by'} value={'Nemo'} />
+								<InfoRow icon={CodeIcon} label={'Expo SDK'} value={expoSdkVersion} />
+							</View>
+						</InfoCard>
 					</View>
 
-					<Divider style={[styles.divider, { backgroundColor: colors.outlineVariant }]} />
-
-					<View style={styles.infoSection}>
-						<InfoRow
-							icon={PackageIcon}
-							label={'Version'}
-							value={appVersion}
-						/>
-						<InfoRow icon={CodeIcon} label={'Developed by'} value={'Kurup'} />
-						<InfoRow icon={CodeIcon} label={'Tested by'} value={'Nemo'} />
-						<InfoRow icon={CodeIcon} label={'Build'} value={"KurMon's hope"} />
-						<InfoRow icon={CodeIcon} label={'Expo SDK'} value={expoSdkVersion} />
-						<InfoRow icon={SmartphoneIcon} label={'Platform'} value={platformVersion} />
-						<InfoRow
-							icon={CpuIcon}
-							label={'Architecture'}
-							value={Platform.OS === 'ios' ? 'arm64' : 'arm64-v8a'}
-						/>
-					</View>
-
-					<Divider style={[styles.divider, { backgroundColor: colors.outlineVariant }]} />
-
-						<Text
-							variant={'bodySmall'}
-							style={[styles.description, { color: colors.onSurfaceVariant }]}
-						>
-							JioSaavn-powered music playback with offline downloads and a focused mobile
-							experience.
-						</Text>
+					<Text
+						variant={'bodySmall'}
+						style={[styles.description, { color: colors.onSurfaceVariant }]}
+					>
+						JioSaavn-powered music playback with offline downloads and a focused mobile
+						experience.
+					</Text>
 				</Dialog.Content>
 				<Dialog.Actions style={styles.actions}>
 					<Button mode={'text'} onPress={onDismiss} textColor={colors.primary}>
@@ -129,11 +151,22 @@ const styles = StyleSheet.create({
 	dialog: {
 		borderRadius: M3Shapes.extraLarge,
 	},
-	headerSection: {
+	cardGrid: {
+		gap: 12,
+	},
+	card: {
+		borderRadius: 20,
+		padding: 16,
+		gap: 12,
+	},
+	cardTitle: {
+		letterSpacing: 0.6,
+		textTransform: 'uppercase',
+	},
+	brandRow: {
 		flexDirection: 'row',
 		alignItems: 'center',
-		gap: 16,
-		marginBottom: 16,
+		gap: 14,
 	},
 	iconContainer: {
 		width: 64,
@@ -154,12 +187,6 @@ const styles = StyleSheet.create({
 	badgeSubText: {
 		fontWeight: '700',
 		letterSpacing: 0.8,
-	},
-	headerText: {
-		flex: 1,
-	},
-	divider: {
-		marginVertical: 16,
 	},
 	infoSection: {
 		gap: 12,

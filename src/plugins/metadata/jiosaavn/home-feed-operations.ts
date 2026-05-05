@@ -130,7 +130,7 @@ function getPreferredLanguages(): string[] {
 		.map(mapPreferenceToApiLanguage)
 		.filter((value): value is string => !!value);
 
-	return mapped.length > 0 ? mapped : ['hindi', 'malayalam', 'tamil'];
+	return mapped.length > 0 ? mapped : ['malayalam', 'tamil'];
 }
 
 function getPreferredLanguageHeader(): string {

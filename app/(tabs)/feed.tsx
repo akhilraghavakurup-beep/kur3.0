@@ -1,6 +1,5 @@
 ﻿import { useCallback, useMemo, useRef } from 'react';
 import {
-	RefreshControl,
 	StyleSheet,
 	View,
 	type LayoutChangeEvent,
@@ -32,9 +31,7 @@ export default function HomeScreen() {
 		localSections,
 		remoteSections,
 		isLoading,
-		isRefreshing,
 		error,
-		handleRefresh,
 		handleLoadMore,
 	} = useHomeFeed();
 
@@ -101,14 +98,6 @@ export default function HomeScreen() {
 	return (
 		<PageLayout edges={[]}>
 			<PlayerAwareScrollView
-				refreshControl={
-					<RefreshControl
-						refreshing={isRefreshing}
-						onRefresh={handleRefresh}
-						tintColor={colors.primary}
-						colors={[colors.primary]}
-					/>
-				}
 				showsVerticalScrollIndicator={false}
 				onLayout={handleLayout}
 				onScroll={handleScroll}

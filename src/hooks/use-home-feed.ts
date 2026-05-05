@@ -4,13 +4,11 @@ import {
 	useHomeFeedSections,
 	useHomeFeedFilterChips,
 	useHomeFeedLoading,
-	useHomeFeedRefreshing,
 	useHomeFeedError,
 	useHomeFeedHasContinuation,
 	useHomeFeedStore,
 } from '@/src/application/state/home-feed-store';
 import { homeFeedService } from '@/src/application/services/home-feed-service';
-import { useHomeContentPreferences } from '@/src/application/state/settings-store';
 import { useCuratedContent } from './use-curated-content';
 import type { FeedSection, FeedFilterChip } from '@/src/domain/entities/feed-section';
 
@@ -19,10 +17,8 @@ interface HomeFeedResult {
 	readonly remoteSections: FeedSection[];
 	readonly filterChips: FeedFilterChip[];
 	readonly isLoading: boolean;
-	readonly isRefreshing: boolean;
 	readonly error: string | null;
 	readonly hasContinuation: boolean;
-	readonly handleRefresh: () => void;
 	readonly handleApplyFilter: (chipText: string, index: number) => void;
 	readonly handleClearFilter: () => void;
 	readonly handleLoadMore: () => void;
@@ -63,10 +59,8 @@ export function useHomeFeed(): HomeFeedResult {
 	const remoteSectionsRaw = useHomeFeedSections();
 	const filterChips = useHomeFeedFilterChips();
 	const isLoading = useHomeFeedLoading();
-	const isRefreshing = useHomeFeedRefreshing();
 	const error = useHomeFeedError();
 	const hasContinuation = useHomeFeedHasContinuation();
-	const homeContentPreferences = useHomeContentPreferences();
 	const curated = useCuratedContent(10);
 
 	useEffect(() => {
@@ -77,7 +71,7 @@ export function useHomeFeed(): HomeFeedResult {
 			homeFeedService.fetchHomeFeed({ force: true });
 		});
 		return () => task.cancel();
-	}, [homeContentPreferences]);
+	}, []);
 
 	const localSections = useMemo(() => buildLocalSections(curated), [curated]);
 
@@ -88,10 +82,6 @@ export function useHomeFeed(): HomeFeedResult {
 		}
 		return remoteSectionsRaw.filter((section) => !isRecentlyPlayedSection(section));
 	}, [localSections, remoteSectionsRaw]);
-
-	const handleRefresh = useCallback(() => {
-		homeFeedService.refresh();
-	}, []);
 
 	const handleApplyFilter = useCallback((chipText: string, index: number) => {
 		homeFeedService.applyFilter(chipText, index);
@@ -111,10 +101,8 @@ export function useHomeFeed(): HomeFeedResult {
 		remoteSections,
 		filterChips,
 		isLoading,
-		isRefreshing,
 		error,
 		hasContinuation,
-		handleRefresh,
 		handleApplyFilter,
 		handleClearFilter,
 		handleLoadMore,
