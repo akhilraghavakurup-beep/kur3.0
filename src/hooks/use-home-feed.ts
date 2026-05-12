@@ -11,6 +11,7 @@ import {
 import { homeFeedService } from '@/src/application/services/home-feed-service';
 import { useCuratedContent } from './use-curated-content';
 import { useAppState } from './use-app-state';
+import { useHomeContentPreferences } from '@/src/application/state/settings-store';
 import type { FeedSection, FeedFilterChip } from '@/src/domain/entities/feed-section';
 
 interface HomeFeedResult {
@@ -20,6 +21,7 @@ interface HomeFeedResult {
 	readonly isLoading: boolean;
 	readonly error: string | null;
 	readonly hasContinuation: boolean;
+	readonly hasSelectedHomeLanguages: boolean;
 	readonly handleApplyFilter: (chipText: string, index: number) => void;
 	readonly handleClearFilter: () => void;
 	readonly handleLoadMore: () => void;
@@ -63,9 +65,19 @@ export function useHomeFeed(): HomeFeedResult {
 	const error = useHomeFeedError();
 	const hasContinuation = useHomeFeedHasContinuation();
 	const curated = useCuratedContent(10);
+	const homeContentPreferences = useHomeContentPreferences();
+	const languageKey = useMemo(
+		() => homeContentPreferences.map((language) => language.toLowerCase()).sort().join(','),
+		[homeContentPreferences]
+	);
+	const hasSelectedHomeLanguages = homeContentPreferences.length > 0;
 
 	useAppState({
 		onForeground: () => {
+			if (!hasSelectedHomeLanguages) {
+				useHomeFeedStore.getState().reset();
+				return;
+			}
 			homeFeedService.fetchHomeFeed({ force: true });
 		},
 	});
@@ -75,10 +87,14 @@ export function useHomeFeed(): HomeFeedResult {
 		// complete so the feed screen paints without blocking on async I/O.
 		const task = InteractionManager.runAfterInteractions(() => {
 			useHomeFeedStore.setState({ activeFilterIndex: null });
+			if (!hasSelectedHomeLanguages) {
+				useHomeFeedStore.getState().reset();
+				return;
+			}
 			homeFeedService.fetchHomeFeed({ force: true });
 		});
 		return () => task.cancel();
-	}, []);
+	}, [hasSelectedHomeLanguages, languageKey]);
 
 	const localSections = useMemo(() => buildLocalSections(curated), [curated]);
 
@@ -110,6 +126,7 @@ export function useHomeFeed(): HomeFeedResult {
 		isLoading,
 		error,
 		hasContinuation,
+		hasSelectedHomeLanguages,
 		handleApplyFilter,
 		handleClearFilter,
 		handleLoadMore,
