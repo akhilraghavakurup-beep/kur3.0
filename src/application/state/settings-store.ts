@@ -315,7 +315,7 @@ export const useSettingsStore = create<SettingsState>()(
 		}),
 		{
 			name: 'aria-settings-storage',
-			version: 3,
+			version: 4,
 			storage: createJSONStorage(() => customStorage),
 			onRehydrateStorage: () => {
 				return () => {
@@ -325,7 +325,10 @@ export const useSettingsStore = create<SettingsState>()(
 			migrate: (persistedState) => {
 				const state = persistedState as Partial<SettingsState> | undefined;
 				const nextHomeContentPreferences = state?.homeContentPreferences?.filter(
-					(preference) => preference !== 'Bollywood' && preference !== 'All languages'
+					(preference) =>
+						preference !== 'Hindi' &&
+						preference !== 'Bollywood' &&
+						preference !== 'All languages'
 				);
 				return {
 					...state,

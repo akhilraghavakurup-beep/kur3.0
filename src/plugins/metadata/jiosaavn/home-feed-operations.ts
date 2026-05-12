@@ -108,6 +108,46 @@ function getPreferredLanguageHeader(): string {
 	return getPreferredLanguages().join(',');
 }
 
+function getPreferredLanguageSet(): Set<string> {
+	return new Set(getPreferredLanguages());
+}
+
+function getItemLanguage(item: unknown): string | null {
+	if (!item || typeof item !== 'object') {
+		return null;
+	}
+
+	const candidate = item as {
+		language?: string | null;
+		more_info?: { language?: string | null } | null;
+	};
+
+	const language = candidate.language ?? candidate.more_info?.language ?? null;
+	if (!language) {
+		return null;
+	}
+
+	return language.toString().trim().toLowerCase() || null;
+}
+
+function shouldKeepLaunchItem(item: unknown, preferredLanguages: Set<string>): boolean {
+	const language = getItemLanguage(item);
+	if (!language) {
+		return true;
+	}
+
+	if (preferredLanguages.has(language)) {
+		return true;
+	}
+
+	return language === 'english' && preferredLanguages.has('english');
+}
+
+function filterLaunchItems(items: unknown[]): unknown[] {
+	const preferredLanguages = getPreferredLanguageSet();
+	return items.filter((item) => shouldKeepLaunchItem(item, preferredLanguages));
+}
+
 function mapMixedFeedItems(items: unknown[]): FeedItem[] {
 	const mapped: FeedItem[] = [];
 
@@ -462,13 +502,26 @@ async function buildHomeFeed(client: JioSaavnClient): Promise<HomeFeedData> {
 		Array.isArray(launchData.collections) && launchData.collections.length > 0
 			? launchData.collections
 			: getModuleOrder(launchData.modules);
+	const promoCollectionOrder = Array.isArray(launchData.collections_temp)
+		? launchData.collections_temp.filter(
+				(collection, index, array) =>
+					typeof collection === 'string' &&
+					array.indexOf(collection) === index &&
+					!collectionOrder.includes(collection)
+			)
+		: [];
 
-	for (const moduleKey of collectionOrder) {
+	for (const moduleKey of [...collectionOrder, ...promoCollectionOrder]) {
 		const module = launchData.modules?.[moduleKey];
 		const title = module?.title?.trim();
 		const items = launchData[moduleKey];
 
 		if (!title || !Array.isArray(items) || items.length === 0) {
+			continue;
+		}
+
+		const filteredItems = filterLaunchItems(items);
+		if (filteredItems.length === 0) {
 			continue;
 		}
 
@@ -478,7 +531,7 @@ async function buildHomeFeed(client: JioSaavnClient): Promise<HomeFeedData> {
 				candidate.titleMatcher(title)
 		);
 
-		const mappedItems = definition ? definition.mapItems(items) : mapAnyFeedItems(items);
+		const mappedItems = definition ? definition.mapItems(filteredItems) : mapAnyFeedItems(filteredItems);
 		const section = createSection(
 			moduleKey,
 			title,

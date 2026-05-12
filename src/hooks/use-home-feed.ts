@@ -10,6 +10,7 @@ import {
 } from '@/src/application/state/home-feed-store';
 import { homeFeedService } from '@/src/application/services/home-feed-service';
 import { useCuratedContent } from './use-curated-content';
+import { useAppState } from './use-app-state';
 import type { FeedSection, FeedFilterChip } from '@/src/domain/entities/feed-section';
 
 interface HomeFeedResult {
@@ -62,6 +63,12 @@ export function useHomeFeed(): HomeFeedResult {
 	const error = useHomeFeedError();
 	const hasContinuation = useHomeFeedHasContinuation();
 	const curated = useCuratedContent(10);
+
+	useAppState({
+		onForeground: () => {
+			homeFeedService.fetchHomeFeed({ force: true });
+		},
+	});
 
 	useEffect(() => {
 		// Defer the network fetch until after mount animations/interactions
