@@ -13,6 +13,7 @@ import { SettingsSelect } from '@/src/components/settings/settings-select';
 import { AccentColorPicker } from '@/src/components/settings/accent-color-picker';
 import { ProgressStylePicker } from '@/src/components/settings/progress-style-picker';
 import { TabOrderSetting } from '@/src/components/settings/tab-order-setting';
+import { SettingsBottomSheet } from '@/src/components/settings/settings-bottom-sheet';
 import { EqualizerSheet } from '@/src/components/settings/equalizer-sheet';
 import { Switch } from 'react-native-paper';
 import {
@@ -30,6 +31,7 @@ import {
 	PaintbrushIcon,
 	TagIcon,
 	FolderOpenIcon,
+	LanguagesIcon,
 } from 'lucide-react-native';
 import {
 	THEME_OPTIONS,
@@ -37,11 +39,17 @@ import {
 	PLAYER_BACKGROUND_OPTIONS,
 	UI_STYLE_OPTIONS,
 	STREAM_QUALITY_OPTIONS,
+	HOME_CONTENT_PREFERENCE_OPTIONS,
 } from '@/lib/settings-config';
 import { useLibraryStore } from '@application/state/library-store';
 import { useLibraryFilterStore } from '@application/state/library-filter-store';
 import { useEqualizerStore } from '@application/state/equalizer-store';
-import { useSettingsStore } from '@application/state/settings-store';
+import {
+	useSettingsStore,
+	useHomeContentPreferences,
+	useResetHomeContentPreferences,
+	useSetHomeContentPreferences,
+} from '@application/state/settings-store';
 import { useDownloadQueue, formatFileSize } from '@/src/hooks/use-download-queue';
 import { useEqualizer } from '@/src/hooks/use-equalizer';
 import { useClearDownloads } from '@/src/hooks/use-clear-downloads';
@@ -51,6 +59,9 @@ import Constants from 'expo-constants';
 import { permissionService } from '@/src/application/services/permission-service';
 
 export default function SettingsScreen() {
+	const homeContentPreferences = useHomeContentPreferences();
+	const setHomeContentPreferences = useSetHomeContentPreferences();
+	const resetHomeContentPreferences = useResetHomeContentPreferences();
 	const { tracks, playlists, favorites } = useLibraryStore(
 		useShallow((state) => ({
 			tracks: state.tracks,
@@ -152,6 +163,12 @@ export default function SettingsScreen() {
 	const [resetEqualizerDialogVisible, setResetEqualizerDialogVisible] = useState(false);
 	const [factoryResetDialogVisible, setFactoryResetDialogVisible] = useState(false);
 	const [downloadLocationSheetVisible, setDownloadLocationSheetVisible] = useState(false);
+	const [homeLanguagesSheetVisible, setHomeLanguagesSheetVisible] = useState(false);
+
+	const homeLanguageLabel =
+		homeContentPreferences.length > 0
+			? homeContentPreferences.join(', ')
+			: 'Malayalam, Tamil';
 
 	const openEqualizerSheet = useCallback(() => {
 		setEqualizerSheetOpen(true);
@@ -286,6 +303,21 @@ export default function SettingsScreen() {
 		[downloadLocationLabel]
 	);
 
+	const homeLanguageOptions = useMemo(
+		() => HOME_CONTENT_PREFERENCE_OPTIONS,
+		[]
+	);
+
+	const handleHomeLanguageToggle = useCallback(
+		(language: (typeof homeLanguageOptions)[number]['value'], enabled: boolean) => {
+			const next = enabled
+				? Array.from(new Set([...homeContentPreferences, language]))
+				: homeContentPreferences.filter((value) => value !== language);
+			setHomeContentPreferences(next.length > 0 ? next : ['Malayalam', 'Tamil']);
+		},
+		[homeContentPreferences, homeLanguageOptions, setHomeContentPreferences]
+	);
+
 	const appVersion = Constants.expoConfig?.version ?? '1.0.0';
 
 	return (
@@ -395,6 +427,16 @@ export default function SettingsScreen() {
 						title={'Equalizer'}
 						subtitle={eqEnabled ? `${currentPreset.name} (On)` : 'Off'}
 						onPress={openEqualizerSheet}
+						showChevron
+					/>
+				</SettingsSection>
+
+				<SettingsSection title={'Home feed'}>
+					<SettingsItem
+						icon={LanguagesIcon}
+						title={'Home languages'}
+						subtitle={`${homeLanguageLabel} · Applies on next app start`}
+						onPress={() => setHomeLanguagesSheetVisible(true)}
 						showChevron
 					/>
 				</SettingsSection>
@@ -563,6 +605,39 @@ export default function SettingsScreen() {
 				visible={versionDialogVisible}
 				onDismiss={() => setVersionDialogVisible(false)}
 			/>
+
+			<SettingsBottomSheet
+				isOpen={homeLanguagesSheetVisible}
+				onClose={() => setHomeLanguagesSheetVisible(false)}
+				portalName={'home-languages'}
+				title={'Home languages'}
+				showReset
+				onReset={() => {
+					resetHomeContentPreferences();
+				}}
+			>
+				{homeLanguageOptions.map((option) => {
+					const isEnabled = homeContentPreferences.includes(option.value);
+
+					return (
+						<SettingsItem
+							key={option.value}
+							icon={option.icon}
+							title={option.label}
+							subtitle={'Used on the next app launch'}
+							rightElement={
+								<Switch
+									value={isEnabled}
+									onValueChange={(enabled) =>
+										handleHomeLanguageToggle(option.value, enabled)
+									}
+								/>
+							}
+							onPress={() => handleHomeLanguageToggle(option.value, !isEnabled)}
+						/>
+					);
+				})}
+			</SettingsBottomSheet>
 		</PageLayout>
 	);
 }

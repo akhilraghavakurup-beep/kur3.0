@@ -19,8 +19,6 @@ export type PlayerBackground = 'artwork-blur' | 'artwork-solid' | 'theme-color';
 export type DownloadLocationMode = 'music' | 'custom';
 export type UIStyle = 'clean' | 'glow-flow' | 'glass' | 'bold' | 'neo';
 export type HomeContentPreference =
-	| 'All languages'
-	| 'Bollywood'
 	| 'Malayalam'
 	| 'Tamil'
 	| 'Telugu'
@@ -85,7 +83,6 @@ interface SettingsState {
 	setDefaultTab: (tab: DefaultTab) => void;
 	setHomeContentPreferences: (preferences: HomeContentPreference[]) => void;
 	toggleHomeContentPreference: (preference: HomeContentPreference) => void;
-	selectAllHomeContentPreferences: () => void;
 	resetHomeContentPreferences: () => void;
 	setHomeFeedPriority: (priority: HomeFeedPrioritySection[]) => void;
 	moveHomeFeedPriorityUp: (section: HomeFeedPrioritySection) => void;
@@ -162,35 +159,20 @@ export const useSettingsStore = create<SettingsState>()(
 			setHomeContentPreferences: (preferences: HomeContentPreference[]) => {
 				const normalized = Array.from(new Set(preferences));
 				set({
-					homeContentPreferences: normalized.includes('All languages')
-						? ['All languages']
-						: normalized.filter((item) => item !== 'All languages'),
+					homeContentPreferences:
+						normalized.length > 0 ? normalized : DEFAULT_HOME_CONTENT_PREFERENCES,
 				});
 			},
 			toggleHomeContentPreference: (preference: HomeContentPreference) => {
 				const { homeContentPreferences } = get();
-
-				if (preference === 'All languages') {
-					set({
-						homeContentPreferences: homeContentPreferences.includes('All languages')
-							? DEFAULT_HOME_CONTENT_PREFERENCES
-							: ['All languages'],
-					});
-					return;
-				}
-
-				const withoutAll = homeContentPreferences.filter((item) => item !== 'All languages');
-				const nextPreferences = withoutAll.includes(preference)
-					? withoutAll.filter((item) => item !== preference)
-					: [...withoutAll, preference];
+				const nextPreferences = homeContentPreferences.includes(preference)
+					? homeContentPreferences.filter((item) => item !== preference)
+					: [...homeContentPreferences, preference];
 
 				set({
 					homeContentPreferences:
 						nextPreferences.length > 0 ? nextPreferences : DEFAULT_HOME_CONTENT_PREFERENCES,
 				});
-			},
-			selectAllHomeContentPreferences: () => {
-				set({ homeContentPreferences: ['All languages'] });
 			},
 			resetHomeContentPreferences: () => {
 				set({ homeContentPreferences: DEFAULT_HOME_CONTENT_PREFERENCES });
@@ -333,7 +315,7 @@ export const useSettingsStore = create<SettingsState>()(
 		}),
 		{
 			name: 'aria-settings-storage',
-			version: 2,
+			version: 3,
 			storage: createJSONStorage(() => customStorage),
 			onRehydrateStorage: () => {
 				return () => {
@@ -342,8 +324,9 @@ export const useSettingsStore = create<SettingsState>()(
 			},
 			migrate: (persistedState) => {
 				const state = persistedState as Partial<SettingsState> | undefined;
-				const nextHomeContentPreferences = state?.homeContentPreferences
-					?.filter((preference) => preference !== 'Bollywood');
+				const nextHomeContentPreferences = state?.homeContentPreferences?.filter(
+					(preference) => preference !== 'Bollywood' && preference !== 'All languages'
+				);
 				return {
 					...state,
 					accentColor: state?.accentColor ?? '#7C3AED',
@@ -376,9 +359,6 @@ export const useSetHomeContentPreferences = () =>
 
 export const useToggleHomeContentPreference = () =>
 	useSettingsStore((state) => state.toggleHomeContentPreference);
-
-export const useSelectAllHomeContentPreferences = () =>
-	useSettingsStore((state) => state.selectAllHomeContentPreferences);
 
 export const useResetHomeContentPreferences = () =>
 	useSettingsStore((state) => state.resetHomeContentPreferences);

@@ -547,10 +547,6 @@ export class SearchService {
 
 	private _getPreferredLanguageTerms(): string[] {
 		const preferences = useSettingsStore.getState().homeContentPreferences;
-		if (preferences.includes('All languages')) {
-			return [];
-		}
-
 		const terms = new Set<string>();
 		for (const pref of preferences) {
 			const key = pref.toLowerCase();

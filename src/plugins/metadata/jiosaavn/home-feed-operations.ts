@@ -70,21 +70,8 @@ const matchesTitle =
 	(title: string) =>
 		patterns.some((pattern) => title.toLowerCase().includes(pattern));
 
-function normalizeLanguageTokens(value?: string | null): string[] {
-	if (!value) {
-		return [];
-	}
-
-	return value
-		.split(',')
-		.map((entry) => entry.trim().toLowerCase())
-		.filter(Boolean);
-}
-
 function mapPreferenceToApiLanguage(preference: HomeContentPreference): string | null {
 	switch (preference) {
-		case 'Bollywood':
-			return 'hindi';
 		case 'Malayalam':
 			return 'malayalam';
 		case 'Tamil':
@@ -103,7 +90,6 @@ function mapPreferenceToApiLanguage(preference: HomeContentPreference): string |
 			return 'bengali';
 		case 'Gujarati':
 			return 'gujarati';
-		case 'All languages':
 		default:
 			return null;
 	}
@@ -111,21 +97,6 @@ function mapPreferenceToApiLanguage(preference: HomeContentPreference): string |
 
 function getPreferredLanguages(): string[] {
 	const preferences = useSettingsStore.getState().homeContentPreferences;
-	if (preferences.includes('All languages')) {
-		return [
-			'hindi',
-			'english',
-			'malayalam',
-			'tamil',
-			'telugu',
-			'kannada',
-			'punjabi',
-			'marathi',
-			'bengali',
-			'gujarati',
-		];
-	}
-
 	const mapped = preferences
 		.map(mapPreferenceToApiLanguage)
 		.filter((value): value is string => !!value);
@@ -135,79 +106,6 @@ function getPreferredLanguages(): string[] {
 
 function getPreferredLanguageHeader(): string {
 	return getPreferredLanguages().join(',');
-}
-
-function getItemLanguageSet(item: unknown): Set<string> {
-	if (!item || typeof item !== 'object') {
-		return new Set();
-	}
-
-	const candidate = item as {
-		language?: string | null;
-		dominantLanguage?: string | null;
-		subtitle?: string | null;
-		title?: string | null;
-		name?: string | null;
-		more_info?: { language?: string | null; query?: string | null } | null;
-	};
-
-	const languages = new Set<string>([
-		...normalizeLanguageTokens(candidate.language),
-		...normalizeLanguageTokens(candidate.dominantLanguage),
-		...normalizeLanguageTokens(candidate.more_info?.language),
-	]);
-
-	const text = [
-		candidate.subtitle,
-		candidate.title,
-		candidate.name,
-		candidate.more_info?.query,
-	]
-		.filter(Boolean)
-		.join(' ')
-		.toLowerCase();
-
-	if (text.includes('bollywood')) {
-		languages.add('hindi');
-	}
-
-	return languages;
-}
-
-function scoreItemForPreferences(item: unknown, preferredLanguages: string[]): number {
-	const itemLanguages = getItemLanguageSet(item);
-	if (itemLanguages.size === 0) {
-		return 0;
-	}
-
-	return preferredLanguages.reduce((score, language, index) => {
-		return itemLanguages.has(language) ? score + (preferredLanguages.length - index) * 10 : score;
-	}, 0);
-}
-
-function sortItemsForPreferences(items: unknown[]): unknown[] {
-	const preferredLanguages = getPreferredLanguages();
-	return [...items].sort((left, right) => {
-		const scoreDiff =
-			scoreItemForPreferences(right, preferredLanguages) -
-			scoreItemForPreferences(left, preferredLanguages);
-		if (scoreDiff !== 0) {
-			return scoreDiff;
-		}
-		return 0;
-	});
-}
-
-function filterItemsForPreferences(items: unknown[]): unknown[] {
-	const preferredLanguages = getPreferredLanguages();
-	return items.filter((item) => {
-		const itemLanguages = getItemLanguageSet(item);
-		if (itemLanguages.size === 0) {
-			return true;
-		}
-
-		return preferredLanguages.some((language) => itemLanguages.has(language));
-	});
 }
 
 function mapMixedFeedItems(items: unknown[]): FeedItem[] {
@@ -554,10 +452,18 @@ function prioritizeSections(sections: FeedSection[]): FeedSection[] {
 }
 
 async function buildHomeFeed(client: JioSaavnClient): Promise<HomeFeedData> {
-	const launchData = await client.getLaunchData(getPreferredLanguageHeader());
+	const launchData = (await client.getLaunchData(getPreferredLanguageHeader())) as JioSaavnLaunchData & {
+		collections?: string[];
+		collections_temp?: string[];
+	};
 	const sections: FeedSection[] = [];
 
-	for (const moduleKey of getModuleOrder(launchData.modules)) {
+	const collectionOrder =
+		Array.isArray(launchData.collections) && launchData.collections.length > 0
+			? launchData.collections
+			: getModuleOrder(launchData.modules);
+
+	for (const moduleKey of collectionOrder) {
 		const module = launchData.modules?.[moduleKey];
 		const title = module?.title?.trim();
 		const items = launchData[moduleKey];
@@ -572,8 +478,7 @@ async function buildHomeFeed(client: JioSaavnClient): Promise<HomeFeedData> {
 				candidate.titleMatcher(title)
 		);
 
-		const scopedItems = sortItemsForPreferences(filterItemsForPreferences(items));
-		const mappedItems = definition ? definition.mapItems(scopedItems) : mapAnyFeedItems(scopedItems);
+		const mappedItems = definition ? definition.mapItems(items) : mapAnyFeedItems(items);
 		const section = createSection(
 			moduleKey,
 			title,

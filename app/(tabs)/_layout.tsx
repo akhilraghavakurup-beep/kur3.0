@@ -3,23 +3,11 @@ import { Tabs, router } from 'expo-router';
 import { View, Pressable, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
-import { Text, IconButton, Switch } from 'react-native-paper';
-import { LanguagesIcon, SettingsIcon } from 'lucide-react-native';
-import { SettingsBottomSheet } from '@/src/components/settings/settings-bottom-sheet';
-import { SettingsItem } from '@/src/components/settings/settings-item';
+import { Text, IconButton } from 'react-native-paper';
+import { SettingsIcon } from 'lucide-react-native';
 import { useAppTheme, resolveDisplayFont } from '@/lib/theme';
 import { useActiveDownloadsCount } from '@/src/application/state/download-store';
-import {
-	useHomeContentPreferences,
-	useResetHomeContentPreferences,
-	useSetHomeContentPreferences,
-	useSelectAllHomeContentPreferences,
-	useTabOrder,
-	useEnabledTabs,
-	type TabId,
-	DEFAULT_TAB_ORDER,
-} from '@/src/application/state/settings-store';
-import { HOME_CONTENT_PREFERENCE_OPTIONS } from '@/lib/settings-config';
+import { useTabOrder, useEnabledTabs, type TabId, DEFAULT_TAB_ORDER } from '@/src/application/state/settings-store';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { TAB_CONFIG, TAB_BAR_HEIGHT } from '@/lib/tab-config';
 import { LottieTabIcon } from '@/src/components/ui/lottie-tab-icon';
@@ -33,10 +21,6 @@ const INDICATOR_HEIGHT = 32;
 const INDICATOR_TOP = 11;
 
 const TAB_SPRING_CONFIG = { damping: 20, stiffness: 200, mass: 0.5 };
-
-const HOME_LANGUAGE_OPTIONS = HOME_CONTENT_PREFERENCE_OPTIONS.filter(
-	(option) => option.value !== 'All languages'
-);
 
 // Lightweight pub/sub so the tab bar can notify the header of active tab
 // changes without re-rendering the parent TabLayout (which would recreate
@@ -126,57 +110,7 @@ function TabHeader({ initialTabId }: { readonly initialTabId: TabId }) {
 	const currentTabId = useActiveTabListener(initialTabId);
 	const { colors } = useAppTheme();
 	const insets = useSafeAreaInsets();
-	const homeContentPreferences = useHomeContentPreferences();
-	const resetHomeContentPreferences = useResetHomeContentPreferences();
-	const setHomeContentPreferences = useSetHomeContentPreferences();
-	const selectAllHomeContentPreferences = useSelectAllHomeContentPreferences();
-	const [preferencesSheetOpen, setPreferencesSheetOpen] = useState(false);
 	const title = TAB_CONFIG[currentTabId]?.title ?? '';
-	const isAllLanguagesSelected = homeContentPreferences.includes('All languages');
-
-	const handleSelectAllToggle = useCallback(
-		(enabled: boolean) => {
-			if (enabled) {
-				selectAllHomeContentPreferences();
-				return;
-			}
-			resetHomeContentPreferences();
-		},
-		[resetHomeContentPreferences, selectAllHomeContentPreferences]
-	);
-
-	const handleLanguageToggle = useCallback(
-		(language: (typeof HOME_LANGUAGE_OPTIONS)[number]['value'], enabled: boolean) => {
-			if (enabled) {
-				if (isAllLanguagesSelected) {
-					return;
-				}
-				const current = homeContentPreferences.filter((item) => item !== 'All languages');
-				if (current.includes(language)) {
-					return;
-				}
-				setHomeContentPreferences([...current, language]);
-				return;
-			}
-
-			if (isAllLanguagesSelected) {
-				setHomeContentPreferences(
-					HOME_LANGUAGE_OPTIONS.map((option) => option.value).filter((value) => value !== language)
-				);
-				return;
-			}
-
-			const current = homeContentPreferences.filter((item) => item !== 'All languages');
-			if (!current.includes(language)) {
-				return;
-			}
-			if (current.length <= 1) {
-				return;
-			}
-			setHomeContentPreferences(current.filter((value) => value !== language));
-		},
-		[homeContentPreferences, isAllLanguagesSelected, setHomeContentPreferences]
-	);
 
 	return (
 		<>
@@ -187,13 +121,6 @@ function TabHeader({ initialTabId }: { readonly initialTabId: TabId }) {
 				]}
 			>
 				<View style={styles.headerActions}>
-					<IconButton
-						icon={() => (
-							<Icon as={LanguagesIcon} size={22} color={colors.onSurfaceVariant} />
-						)}
-						onPress={() => setPreferencesSheetOpen(true)}
-						accessibilityLabel={'Home recommendation preferences'}
-					/>
 					<IconButton
 						icon={() => <Icon as={SettingsIcon} size={22} color={colors.onSurfaceVariant} />}
 						onPress={() => router.push('/settings')}
@@ -211,48 +138,6 @@ function TabHeader({ initialTabId }: { readonly initialTabId: TabId }) {
 				</Text>
 				<View style={styles.headerActionSpacer} />
 			</View>
-
-			<SettingsBottomSheet
-				isOpen={preferencesSheetOpen}
-				onClose={() => setPreferencesSheetOpen(false)}
-				portalName={'home-preferences-sheet'}
-				title={'Home recommendations'}
-			>
-				<SettingsItem
-					icon={LanguagesIcon}
-					title={'Select all languages'}
-					subtitle={'Enable every supported language at once'}
-					rightElement={
-						<Switch
-							value={isAllLanguagesSelected}
-							onValueChange={handleSelectAllToggle}
-							color={colors.primary}
-						/>
-					}
-					onPress={() => handleSelectAllToggle(!isAllLanguagesSelected)}
-				/>
-				{HOME_LANGUAGE_OPTIONS.map((option) => {
-					const isEnabled =
-						isAllLanguagesSelected || homeContentPreferences.includes(option.value);
-
-					return (
-						<SettingsItem
-							key={option.value}
-							icon={option.icon}
-							title={option.label}
-							subtitle={`Boost ${option.label} suggestions on the home screen`}
-							rightElement={
-								<Switch
-									value={isEnabled}
-									onValueChange={(enabled) => handleLanguageToggle(option.value, enabled)}
-									color={colors.primary}
-								/>
-							}
-							onPress={() => handleLanguageToggle(option.value, !isEnabled)}
-						/>
-					);
-				})}
-				</SettingsBottomSheet>
 		</>
 	);
 }
