@@ -11,10 +11,10 @@ describe('home content preferences', () => {
 		expect(normalizeHomeContentPreferences(['Unknown'])).toEqual(['Malayalam', 'Tamil']);
 	});
 
-	it('normalizes legacy language values without dropping Hindi', () => {
+	it('ignores legacy Bollywood while keeping explicit Hindi selections', () => {
 		expect(normalizeHomeContentPreferences(['Bollywood', 'Tamil', 'Hindi'])).toEqual([
-			'Hindi',
 			'Tamil',
+			'Hindi',
 		]);
 	});
 

@@ -64,16 +64,17 @@ export const HOME_CONTENT_PREFERENCE_VALUES = [
 	'Assamese',
 ] as const satisfies readonly HomeContentPreference[];
 
-const HOME_CONTENT_PREFERENCE_SET = new Set<string>(HOME_CONTENT_PREFERENCE_VALUES);
-const HOME_CONTENT_PREFERENCE_ALIASES: Record<string, HomeContentPreference | HomeContentPreference[]> = {
-	'bollywood': 'Hindi',
+const HOME_CONTENT_PREFERENCE_BY_LOWER_CASE = new Map<string, HomeContentPreference>(
+	HOME_CONTENT_PREFERENCE_VALUES.map((preference) => [preference.toLowerCase(), preference])
+);
+const HOME_CONTENT_PREFERENCE_ALIASES: Record<
+	string,
+	HomeContentPreference | HomeContentPreference[]
+> = {
 	'all languages': [...HOME_CONTENT_PREFERENCE_VALUES],
 };
 
-export const DEFAULT_HOME_CONTENT_PREFERENCES: HomeContentPreference[] = [
-	'Malayalam',
-	'Tamil',
-];
+export const DEFAULT_HOME_CONTENT_PREFERENCES: HomeContentPreference[] = ['Malayalam', 'Tamil'];
 export const DEFAULT_HOME_FEED_PRIORITY: HomeFeedPrioritySection[] = [
 	'trending-now',
 	'top-charts',
@@ -113,7 +114,7 @@ interface SettingsState {
 
 	setThemePreference: (preference: ThemePreference) => void;
 	setDefaultTab: (tab: DefaultTab) => void;
-	setHomeContentPreferences: (preferences: HomeContentPreference[]) => void;
+	setHomeContentPreferences: (preferences: readonly unknown[]) => HomeContentPreference[];
 	toggleHomeContentPreference: (preference: HomeContentPreference) => void;
 	resetHomeContentPreferences: () => void;
 	setHomeFeedPriority: (priority: HomeFeedPrioritySection[]) => void;
@@ -165,12 +166,15 @@ export function normalizeHomeContentPreferences(
 
 		const trimmed = rawPreference.trim();
 		const alias = HOME_CONTENT_PREFERENCE_ALIASES[trimmed.toLowerCase()];
+		const canonicalPreference = HOME_CONTENT_PREFERENCE_BY_LOWER_CASE.get(
+			trimmed.toLowerCase()
+		);
 		const mapped = alias
 			? Array.isArray(alias)
 				? alias
 				: [alias]
-			: HOME_CONTENT_PREFERENCE_SET.has(trimmed)
-				? [trimmed as HomeContentPreference]
+			: canonicalPreference
+				? [canonicalPreference]
 				: [];
 
 		for (const preference of mapped) {
@@ -183,9 +187,7 @@ export function normalizeHomeContentPreferences(
 	return normalized.length > 0 ? normalized : [...DEFAULT_HOME_CONTENT_PREFERENCES];
 }
 
-export function getHomeContentLanguageHeader(
-	preferences?: readonly unknown[] | null
-): string {
+export function getHomeContentLanguageHeader(preferences?: readonly unknown[] | null): string {
 	return normalizeHomeContentPreferences(
 		preferences ?? useSettingsStore.getState().homeContentPreferences
 	)
@@ -193,15 +195,11 @@ export function getHomeContentLanguageHeader(
 		.join(',');
 }
 
-export function getHomeContentLanguageCookie(
-	preferences?: readonly unknown[] | null
-): string {
+export function getHomeContentLanguageCookie(preferences?: readonly unknown[] | null): string {
 	return `L=${encodeURIComponent(getHomeContentLanguageHeader(preferences))}`;
 }
 
-export function getHomeContentPreferenceCacheKey(
-	preferences?: readonly unknown[] | null
-): string {
+export function getHomeContentPreferenceCacheKey(preferences?: readonly unknown[] | null): string {
 	return getHomeContentLanguageHeader(preferences);
 }
 
@@ -240,8 +238,10 @@ export const useSettingsStore = create<SettingsState>()(
 			setDefaultTab: (tab: DefaultTab) => {
 				set({ defaultTab: tab });
 			},
-			setHomeContentPreferences: (preferences: HomeContentPreference[]) => {
-				set({ homeContentPreferences: normalizeHomeContentPreferences(preferences) });
+			setHomeContentPreferences: (preferences: readonly unknown[]) => {
+				const normalized = normalizeHomeContentPreferences(preferences);
+				set({ homeContentPreferences: normalized });
+				return normalized;
 			},
 			toggleHomeContentPreference: (preference: HomeContentPreference) => {
 				const { homeContentPreferences } = get();
@@ -392,23 +392,37 @@ export const useSettingsStore = create<SettingsState>()(
 		}),
 		{
 			name: 'aria-settings-storage',
-			version: 5,
+			version: 6,
 			storage: createJSONStorage(() => customStorage),
 			onRehydrateStorage: () => {
-				return () => {
+				return (state) => {
+					if (state) {
+						state.homeContentPreferences = normalizeHomeContentPreferences(
+							(state as { homeContentPreferences?: unknown[] }).homeContentPreferences
+						);
+					}
 					resolveHydration?.();
 				};
 			},
-			migrate: (persistedState) => {
+			migrate: (persistedState, version) => {
 				const state = persistedState as Partial<SettingsState> | undefined;
+				const rawHomePreferences = (
+					state as { homeContentPreferences?: unknown[] } | undefined
+				)?.homeContentPreferences;
+				const safeHomePreferences =
+					version < 6
+						? rawHomePreferences?.filter(
+								(preference) =>
+									preference !== 'Hindi' &&
+									preference !== 'Bollywood' &&
+									preference !== 'All languages'
+							)
+						: rawHomePreferences;
 				return {
 					...state,
 					accentColor: state?.accentColor ?? '#7C3AED',
 					uiStyle: state?.uiStyle ?? 'neo',
-					homeContentPreferences: normalizeHomeContentPreferences(
-						(state as { homeContentPreferences?: unknown[] } | undefined)
-							?.homeContentPreferences
-					),
+					homeContentPreferences: normalizeHomeContentPreferences(safeHomePreferences),
 				};
 			},
 		}

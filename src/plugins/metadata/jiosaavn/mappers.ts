@@ -157,13 +157,17 @@ function normalizeArtistCollection(
 		return [];
 	}
 
+	const collection = artists as Partial<
+		JioSaavnArtistCollection & JioSaavnLegacyArtistCollection
+	>;
+
 	return (
-		artists.primary ??
-		artists.primary_artists ??
-		artists.all ??
-		artists.artists ??
-		artists.featured ??
-		artists.featured_artists ??
+		collection.primary ??
+		collection.primary_artists ??
+		collection.all ??
+		collection.artists ??
+		collection.featured ??
+		collection.featured_artists ??
 		[]
 	);
 }
@@ -202,7 +206,8 @@ function playlistSubtitle(playlist: JioSaavnPlaylist): string | undefined {
 		parseNumber(playlist.count) ??
 		parseNumber(playlist.more_info?.song_count);
 	const followers =
-		parseNumber(playlist.more_info?.follower_count) ?? parseNumber(playlist.more_info?.fan_count);
+		parseNumber(playlist.more_info?.follower_count) ??
+		parseNumber(playlist.more_info?.fan_count);
 	const language = decode(playlist.language);
 
 	if (count && followers) {
@@ -314,7 +319,11 @@ export function mapArtist(artist: JioSaavnArtist | JioSaavnArtistPageDetails): A
 	const artwork = mapImages(artist.image);
 	const bio = parseArtistBio(artist.bio ?? artist.description);
 	const jiosaavnUrl =
-		artist.url ?? artist.perma_url ?? artist.urls?.overview ?? artist.urls?.songs ?? artist.urls?.albums;
+		artist.url ??
+		artist.perma_url ??
+		artist.urls?.overview ??
+		artist.urls?.songs ??
+		artist.urls?.albums;
 
 	return {
 		id: `jiosaavn-artist:${id}`,
@@ -401,7 +410,9 @@ export function stripSourcePrefix(value: string): string {
 	return index === -1 ? value : value.slice(index + 1);
 }
 
-export function sortDownloadUrls(downloadUrls?: JioSaavnDownloadUrl[] | null): JioSaavnDownloadUrl[] {
+export function sortDownloadUrls(
+	downloadUrls?: JioSaavnDownloadUrl[] | null
+): JioSaavnDownloadUrl[] {
 	return [...(downloadUrls ?? [])].sort(
 		(left, right) => (parseInt(right.quality, 10) || 0) - (parseInt(left.quality, 10) || 0)
 	);

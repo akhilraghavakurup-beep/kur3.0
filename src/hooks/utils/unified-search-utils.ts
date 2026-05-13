@@ -83,6 +83,7 @@ export function resolveDownloadsTracks(
 		return createTrackFromDownloadedMetadata({
 			trackId,
 			filePath: '',
+			fileName: 'Unknown',
 			fileSize: 0,
 			downloadedAt: 0,
 			sourcePlugin: 'unknown',

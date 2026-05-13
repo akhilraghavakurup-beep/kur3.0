@@ -1,8 +1,4 @@
-import type {
-	FeedItem,
-	FeedSection,
-	HomeFeedData,
-} from '@domain/entities/feed-section';
+import type { FeedItem, FeedSection, HomeFeedData } from '@domain/entities/feed-section';
 import type { Track } from '@domain/entities/track';
 import type {
 	HomeFeedOperations,
@@ -15,6 +11,7 @@ import {
 	type HomeFeedPrioritySection,
 } from '@/src/application/state/settings-store';
 import type {
+	JioSaavnLaunchData,
 	JioSaavnLaunchModule,
 	JioSaavnAlbum,
 	JioSaavnPlaylist,
@@ -22,13 +19,7 @@ import type {
 	JioSaavnSong,
 } from './types';
 import type { JioSaavnClient } from './client';
-import {
-	mapAlbum,
-	mapArtistStation,
-	mapPlaylistFeed,
-	mapSong,
-	stripSourcePrefix,
-} from './mappers';
+import { mapAlbum, mapArtistStation, mapPlaylistFeed, mapSong, stripSourcePrefix } from './mappers';
 
 export type {
 	HomeFeedOperations,
@@ -152,7 +143,9 @@ function mapAnyFeedItems(items: unknown[]): FeedItem[] {
 function mapPlaylistItems(items: unknown[]): FeedItem[] {
 	return items
 		.map((item) => mapPlaylistFeed(item as JioSaavnPlaylist))
-		.filter((playlist): playlist is NonNullable<ReturnType<typeof mapPlaylistFeed>> => !!playlist)
+		.filter(
+			(playlist): playlist is NonNullable<ReturnType<typeof mapPlaylistFeed>> => !!playlist
+		)
 		.map((playlist) => ({ type: 'playlist' as const, data: playlist }));
 }
 
@@ -268,7 +261,7 @@ function getModuleOrder(modules?: Record<string, JioSaavnLaunchModule>): string[
 		return [];
 	}
 
-	const preferredOrder = new Map(
+	const preferredOrder = new Map<string, number>(
 		BLACKHOLE_COLLECTION_ORDER.map((key, index) => [key, index] as const)
 	);
 
@@ -278,7 +271,10 @@ function getModuleOrder(modules?: Record<string, JioSaavnLaunchModule>): string[
 			const rightPreferred = preferredOrder.get(rightKey);
 
 			if (leftPreferred !== undefined && rightPreferred !== undefined) {
-				return leftPreferred - rightPreferred || (left.position ?? 999) - (right.position ?? 999);
+				return (
+					leftPreferred - rightPreferred ||
+					(left.position ?? 999) - (right.position ?? 999)
+				);
 			}
 
 			if (leftPreferred !== undefined) {
@@ -295,7 +291,9 @@ function getModuleOrder(modules?: Record<string, JioSaavnLaunchModule>): string[
 				return leftPromo ? 1 : -1;
 			}
 
-			return (left.position ?? 999) - (right.position ?? 999) || leftKey.localeCompare(rightKey);
+			return (
+				(left.position ?? 999) - (right.position ?? 999) || leftKey.localeCompare(rightKey)
+			);
 		})
 		.map(([key]) => key);
 }
@@ -349,7 +347,7 @@ function dedupeSections(sections: FeedSection[]): FeedSection[] {
 
 function prioritizeSections(sections: FeedSection[]): FeedSection[] {
 	const configuredPriority = useSettingsStore.getState().homeFeedPriority;
-	const blackholePriority = new Map(
+	const blackholePriority = new Map<string, number>(
 		BLACKHOLE_SECTION_PRIORITY.map((key, index) => [key, index] as const)
 	);
 	const sectionToPriorityKey = (section: FeedSection): HomeFeedPrioritySection | null => {
@@ -376,7 +374,9 @@ function prioritizeSections(sections: FeedSection[]): FeedSection[] {
 		}
 	};
 
-	const priorityMap = new Map(configuredPriority.map((key, index) => [key, index]));
+	const priorityMap = new Map<string, number>(
+		configuredPriority.map((key, index) => [key, index])
+	);
 
 	return [...sections].sort((left, right) => {
 		const leftBlackhole = blackholePriority.get(left.id);
@@ -414,7 +414,9 @@ function prioritizeSections(sections: FeedSection[]): FeedSection[] {
 }
 
 async function buildHomeFeed(client: JioSaavnClient): Promise<HomeFeedData> {
-	const launchData = (await client.getLaunchData(getHomeContentLanguageHeader())) as JioSaavnLaunchData & {
+	const launchData = (await client.getLaunchData(
+		getHomeContentLanguageHeader()
+	)) as JioSaavnLaunchData & {
 		collections?: string[];
 		collections_temp?: string[];
 	};
@@ -453,7 +455,7 @@ async function buildHomeFeed(client: JioSaavnClient): Promise<HomeFeedData> {
 			moduleKey,
 			title,
 			mappedItems,
-			definition?.subtitle ?? module.subtitle
+			definition?.subtitle ?? module?.subtitle
 		);
 		if (section) {
 			sections.push(section);
@@ -497,7 +499,10 @@ export function createHomeFeedOperations(client: JioSaavnClient): HomeFeedOperat
 
 		async getPlaylistTracks(playlistId: string): Promise<Result<PlaylistTracksPage, Error>> {
 			try {
-				const playlist = await client.getPlaylist(stripSourcePrefix(playlistId), PLAYLIST_FETCH_LIMIT);
+				const playlist = await client.getPlaylist(
+					stripSourcePrefix(playlistId),
+					PLAYLIST_FETCH_LIMIT
+				);
 				const tracks = (playlist.songs ?? [])
 					.map(mapSong)
 					.filter((track): track is Track => !!track);

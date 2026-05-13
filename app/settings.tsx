@@ -1,5 +1,5 @@
-import { StyleSheet } from 'react-native';
-import { useCallback, useMemo, useState } from 'react';
+import { StyleSheet, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { router } from 'expo-router';
 import { useShallow } from 'zustand/react/shallow';
 import { ActionSheet } from '@/src/components/ui/action-sheet';
@@ -15,7 +15,7 @@ import { ProgressStylePicker } from '@/src/components/settings/progress-style-pi
 import { TabOrderSetting } from '@/src/components/settings/tab-order-setting';
 import { SettingsBottomSheet } from '@/src/components/settings/settings-bottom-sheet';
 import { EqualizerSheet } from '@/src/components/settings/equalizer-sheet';
-import { Switch } from 'react-native-paper';
+import { Button, Switch } from 'react-native-paper';
 import {
 	TrashIcon,
 	InfoIcon,
@@ -46,8 +46,9 @@ import { useLibraryFilterStore } from '@application/state/library-filter-store';
 import { useEqualizerStore } from '@application/state/equalizer-store';
 import {
 	useSettingsStore,
+	DEFAULT_HOME_CONTENT_PREFERENCES,
+	type HomeContentPreference,
 	useHomeContentPreferences,
-	useResetHomeContentPreferences,
 	useSetHomeContentPreferences,
 } from '@application/state/settings-store';
 import { useDownloadQueue, formatFileSize } from '@/src/hooks/use-download-queue';
@@ -62,7 +63,6 @@ import { homeFeedService } from '@/src/application/services/home-feed-service';
 export default function SettingsScreen() {
 	const homeContentPreferences = useHomeContentPreferences();
 	const setHomeContentPreferences = useSetHomeContentPreferences();
-	const resetHomeContentPreferences = useResetHomeContentPreferences();
 	const { tracks, playlists, favorites } = useLibraryStore(
 		useShallow((state) => ({
 			tracks: state.tracks,
@@ -91,12 +91,12 @@ export default function SettingsScreen() {
 		setPreferredStreamQuality,
 		autoplaySimilarOnQueueEnd,
 		setAutoplaySimilarOnQueueEnd,
-	downloadLocationMode,
-	musicDownloadDirectoryName,
-	customDownloadDirectoryName,
-	setMusicDownloadDirectory,
-	setCustomDownloadDirectory,
-	resetDownloadLocation,
+		downloadLocationMode,
+		musicDownloadDirectoryName,
+		customDownloadDirectoryName,
+		setMusicDownloadDirectory,
+		setCustomDownloadDirectory,
+		resetDownloadLocation,
 	} = useSettingsStore(
 		useShallow((state) => ({
 			themePreference: state.themePreference,
@@ -165,11 +165,11 @@ export default function SettingsScreen() {
 	const [factoryResetDialogVisible, setFactoryResetDialogVisible] = useState(false);
 	const [downloadLocationSheetVisible, setDownloadLocationSheetVisible] = useState(false);
 	const [homeLanguagesSheetVisible, setHomeLanguagesSheetVisible] = useState(false);
+	const [draftHomeLanguages, setDraftHomeLanguages] =
+		useState<HomeContentPreference[]>(homeContentPreferences);
 
 	const homeLanguageLabel =
-		homeContentPreferences.length > 0
-			? homeContentPreferences.join(', ')
-			: 'Malayalam, Tamil';
+		homeContentPreferences.length > 0 ? homeContentPreferences.join(', ') : 'Malayalam, Tamil';
 
 	const openEqualizerSheet = useCallback(() => {
 		setEqualizerSheetOpen(true);
@@ -230,8 +230,8 @@ export default function SettingsScreen() {
 
 	const downloadLocationLabel =
 		downloadLocationMode === 'music'
-			? musicDownloadDirectoryName ?? 'Music folder'
-			: customDownloadDirectoryName ?? 'Selected folder';
+			? (musicDownloadDirectoryName ?? 'Music folder')
+			: (customDownloadDirectoryName ?? 'Selected folder');
 
 	const handleSelectDownloadLocation = useCallback(
 		async (selection: string) => {
@@ -270,12 +270,7 @@ export default function SettingsScreen() {
 				success('Download location reset', 'Downloads will use the Music folder again');
 			}
 		},
-		[
-			resetDownloadLocation,
-			setCustomDownloadDirectory,
-			setMusicDownloadDirectory,
-			success,
-		]
+		[resetDownloadLocation, setCustomDownloadDirectory, setMusicDownloadDirectory, success]
 	);
 
 	const downloadLocationGroups = useMemo(
@@ -305,21 +300,47 @@ export default function SettingsScreen() {
 		[downloadLocationLabel]
 	);
 
-	const homeLanguageOptions = useMemo(
-		() => HOME_CONTENT_PREFERENCE_OPTIONS,
+	const homeLanguageOptions = useMemo(() => HOME_CONTENT_PREFERENCE_OPTIONS, []);
+
+	useEffect(() => {
+		if (homeLanguagesSheetVisible) {
+			setDraftHomeLanguages(homeContentPreferences);
+		}
+	}, [homeContentPreferences, homeLanguagesSheetVisible]);
+
+	const handleDraftHomeLanguageToggle = useCallback(
+		(language: (typeof homeLanguageOptions)[number]['value'], enabled: boolean) => {
+			setDraftHomeLanguages((current) =>
+				enabled
+					? Array.from(new Set([...current, language]))
+					: current.filter((value) => value !== language)
+			);
+		},
 		[]
 	);
 
-	const handleHomeLanguageToggle = useCallback(
-		(language: (typeof homeLanguageOptions)[number]['value'], enabled: boolean) => {
-			const next = enabled
-				? Array.from(new Set([...homeContentPreferences, language]))
-				: homeContentPreferences.filter((value) => value !== language);
-			setHomeContentPreferences(next);
-			void homeFeedService.handleLanguagePreferencesChanged();
-		},
-		[homeContentPreferences, homeLanguageOptions, setHomeContentPreferences]
-	);
+	const handleApplyHomeLanguages = useCallback(() => {
+		const normalized = setHomeContentPreferences(draftHomeLanguages);
+		setHomeLanguagesSheetVisible(false);
+		void homeFeedService.handleLanguagePreferencesChanged(normalized);
+		if (draftHomeLanguages.length === 0) {
+			success(
+				'Using default languages',
+				'Malayalam and Tamil will be used for home suggestions'
+			);
+		} else {
+			success('Home languages updated', normalized.join(', '));
+		}
+	}, [draftHomeLanguages, setHomeContentPreferences, success]);
+
+	const handleResetDraftHomeLanguages = useCallback(() => {
+		setDraftHomeLanguages([...DEFAULT_HOME_CONTENT_PREFERENCES]);
+	}, []);
+
+	const handleCancelHomeLanguages = useCallback(() => {
+		setDraftHomeLanguages(homeContentPreferences);
+		setHomeLanguagesSheetVisible(false);
+	}, [homeContentPreferences]);
 
 	const appVersion = Constants.expoConfig?.version ?? '1.0.0';
 
@@ -611,17 +632,14 @@ export default function SettingsScreen() {
 
 			<SettingsBottomSheet
 				isOpen={homeLanguagesSheetVisible}
-				onClose={() => setHomeLanguagesSheetVisible(false)}
+				onClose={handleCancelHomeLanguages}
 				portalName={'home-languages'}
 				title={'Home languages'}
 				showReset
-				onReset={() => {
-					resetHomeContentPreferences();
-					void homeFeedService.handleLanguagePreferencesChanged();
-				}}
+				onReset={handleResetDraftHomeLanguages}
 			>
 				{homeLanguageOptions.map((option) => {
-					const isEnabled = homeContentPreferences.includes(option.value);
+					const isEnabled = draftHomeLanguages.includes(option.value);
 
 					return (
 						<SettingsItem
@@ -633,14 +651,22 @@ export default function SettingsScreen() {
 								<Switch
 									value={isEnabled}
 									onValueChange={(enabled) =>
-										handleHomeLanguageToggle(option.value, enabled)
+										handleDraftHomeLanguageToggle(option.value, enabled)
 									}
 								/>
 							}
-							onPress={() => handleHomeLanguageToggle(option.value, !isEnabled)}
+							onPress={() => handleDraftHomeLanguageToggle(option.value, !isEnabled)}
 						/>
 					);
 				})}
+				<View style={styles.homeLanguageActions}>
+					<Button mode={'text'} onPress={handleCancelHomeLanguages}>
+						Cancel
+					</Button>
+					<Button mode={'contained'} onPress={handleApplyHomeLanguages}>
+						Apply
+					</Button>
+				</View>
 			</SettingsBottomSheet>
 		</PageLayout>
 	);
@@ -653,5 +679,12 @@ const styles = StyleSheet.create({
 	},
 	scrollContent: {
 		paddingBottom: 32,
+	},
+	homeLanguageActions: {
+		flexDirection: 'row',
+		justifyContent: 'flex-end',
+		alignItems: 'center',
+		gap: 8,
+		marginTop: 16,
 	},
 });

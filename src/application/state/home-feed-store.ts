@@ -210,7 +210,7 @@ export const useHomeFeedStore = create<HomeFeedState>()(
 		}),
 		{
 			name: 'aria-home-feed-storage',
-			version: 1,
+			version: 2,
 			storage: createJSONStorage(() => customStorage),
 			partialize: (state) => ({
 				sections: state.sections,
@@ -219,6 +219,7 @@ export const useHomeFeedStore = create<HomeFeedState>()(
 				lastFetchedAt: state.lastFetchedAt,
 				languageKey: state.languageKey,
 			}),
+			migrate: () => ({ ...INITIAL_STATE }),
 			onRehydrateStorage: () => {
 				return (state) => {
 					if (state) {

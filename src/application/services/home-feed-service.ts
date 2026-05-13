@@ -109,12 +109,12 @@ export class HomeFeedService {
 		await this._fetchAllProviders({ isRefreshing: false }, languageKey);
 	}
 
-	async handleLanguagePreferencesChanged(): Promise<void> {
+	async handleLanguagePreferencesChanged(preferences?: readonly unknown[]): Promise<void> {
 		await this._readyPromise;
 		await waitForSettingsHydration();
 		await waitForHomeFeedHydration();
 
-		const languageKey = getHomeContentPreferenceCacheKey();
+		const languageKey = getHomeContentPreferenceCacheKey(preferences);
 		this._clearProviderData();
 		useHomeFeedStore.setState({
 			sections: [],
@@ -127,7 +127,8 @@ export class HomeFeedService {
 		});
 
 		if (this._providers.size > 0) {
-			await this.fetchHomeFeed({ force: true });
+			useHomeFeedStore.setState({ isLoading: true });
+			await this._fetchAllProviders({ isLoading: false }, languageKey);
 		}
 	}
 
