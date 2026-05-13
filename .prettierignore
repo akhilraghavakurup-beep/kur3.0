@@ -3,7 +3,6 @@ dist
 build
 .expo
 android
-ios
 *.lock
 .claude
 .profiling

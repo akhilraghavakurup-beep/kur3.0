@@ -205,7 +205,7 @@ export default function SettingsScreen() {
 	const confirmResetSettings = () => {
 		useSettingsStore.getState().resetAllSettings();
 		setResetSettingsDialogVisible(false);
-		void homeFeedService.handleLanguagePreferencesChanged();
+		void homeFeedService.handleLanguagePreferencesChanged(DEFAULT_HOME_CONTENT_PREFERENCES);
 		success('Settings reset', 'All settings have been restored to defaults');
 	};
 

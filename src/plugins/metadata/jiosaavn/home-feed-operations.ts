@@ -413,9 +413,9 @@ function prioritizeSections(sections: FeedSection[]): FeedSection[] {
 	});
 }
 
-async function buildHomeFeed(client: JioSaavnClient): Promise<HomeFeedData> {
+async function buildHomeFeed(client: JioSaavnClient, language?: string): Promise<HomeFeedData> {
 	const launchData = (await client.getLaunchData(
-		getHomeContentLanguageHeader()
+		language ?? getHomeContentLanguageHeader()
 	)) as JioSaavnLaunchData & {
 		collections?: string[];
 		collections_temp?: string[];
@@ -471,25 +471,25 @@ async function buildHomeFeed(client: JioSaavnClient): Promise<HomeFeedData> {
 
 export function createHomeFeedOperations(client: JioSaavnClient): HomeFeedOperations {
 	return {
-		async getHomeFeed(): Promise<Result<HomeFeedData, Error>> {
+		async getHomeFeed(language?: string): Promise<Result<HomeFeedData, Error>> {
 			try {
-				const data = await buildHomeFeed(client);
+				const data = await buildHomeFeed(client, language);
 				return ok(data);
 			} catch (error) {
 				return err(error instanceof Error ? error : new Error(String(error)));
 			}
 		},
 
-		async applyFilter(_chipText: string): Promise<Result<HomeFeedData, Error>> {
+		async applyFilter(_chipText: string, language?: string): Promise<Result<HomeFeedData, Error>> {
 			try {
-				const data = await buildHomeFeed(client);
+				const data = await buildHomeFeed(client, language);
 				return ok(data);
 			} catch (error) {
 				return err(error instanceof Error ? error : new Error(String(error)));
 			}
 		},
 
-		async loadMore(): Promise<Result<HomeFeedData, Error>> {
+		async loadMore(_language?: string): Promise<Result<HomeFeedData, Error>> {
 			return ok({
 				sections: [],
 				filterChips: [],

@@ -151,64 +151,10 @@ jobs:
                   path: android/app/build/outputs/apk/release/app-release.apk
                   retention-days: 90
 
-    build-ios:
-        name: Build iOS
-        runs-on: macos-latest
-        needs: validate
-        steps:
-            - name: Checkout repository
-              uses: actions/checkout@v6
-              with:
-                  ref: main
-
-            - name: Setup Node.js
-              uses: actions/setup-node@v6
-              with:
-                  node-version: 20
-                  cache: 'npm'
-
-            - name: Setup Ruby
-              uses: ruby/setup-ruby@v1
-              with:
-                  ruby-version: '3.2'
-                  bundler-cache: true
-
-            - name: Install dependencies
-              run: npm ci
-
-            - name: Generate native project
-              run: npx expo prebuild --platform ios --clean
-
-            - name: Install Pods
-              working-directory: ios
-              run: bundle exec pod install
-
-            - name: Setup SSH for Match
-              uses: webfactory/ssh-agent@v0.9.0
-              with:
-                  ssh-private-key: ${{ secrets.ARIA_CERTIFICATES_DEPLOY_KEY }}
-
-            - name: Build iOS with Fastlane
-              env:
-                  MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}
-                  MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
-                  APPLE_ID: ${{ secrets.APPLE_ID }}
-                  APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-                  FASTLANE_USER: ${{ secrets.APPLE_ID }}
-                  FASTLANE_PASSWORD: ${{ secrets.FASTLANE_PASSWORD }}
-              run: bundle exec fastlane ios build_adhoc
-
-            - name: Upload IPA
-              uses: actions/upload-artifact@v4
-              with:
-                  name: aria-${{ needs.validate.outputs.version }}-ios
-                  path: build/Aria.ipa
-                  retention-days: 90
-
     create-release:
         name: Create GitHub Release
         runs-on: self-hosted
-        needs: [validate, build-android, build-ios]
+        needs: [validate, build-android]
         permissions:
             contents: write
         steps:
@@ -229,17 +175,10 @@ jobs:
                   name: aria-${{ needs.validate.outputs.version }}-release
                   path: artifacts/release
 
-            - name: Download iOS IPA
-              uses: actions/download-artifact@v4
-              with:
-                  name: aria-${{ needs.validate.outputs.version }}-ios
-                  path: artifacts/ios
-
             - name: Rename artifacts
               run: |
                   mv artifacts/debug/app-debug.apk artifacts/aria-${{ needs.validate.outputs.version }}-debug.apk
                   mv artifacts/release/app-release.apk artifacts/aria-${{ needs.validate.outputs.version }}-release.apk
-                  mv artifacts/ios/Aria.ipa artifacts/aria-${{ needs.validate.outputs.version }}.ipa
 
             - name: Generate changelog
               id: changelog
@@ -274,11 +213,9 @@ jobs:
                       |------|----------|-------------|
                       | `aria-${{ needs.validate.outputs.version }}-debug.apk` | Android | Debug build for testing |
                       | `aria-${{ needs.validate.outputs.version }}-release.apk` | Android | Release build for distribution |
-                      | `aria-${{ needs.validate.outputs.version }}.ipa` | iOS | Release build for distribution |
                   files: |
                       artifacts/aria-${{ needs.validate.outputs.version }}-debug.apk
                       artifacts/aria-${{ needs.validate.outputs.version }}-release.apk
-                      artifacts/aria-${{ needs.validate.outputs.version }}.ipa
                   draft: false
                   prerelease: ${{ contains(needs.validate.outputs.version, 'alpha') || contains(needs.validate.outputs.version, 'beta') }}
               env:

@@ -11,7 +11,7 @@
 <p align="center">
   <img src="https://github.com/carlelieser/aria/actions/workflows/release.yml/badge.svg" alt="Release Status"  />
   <img src="https://img.shields.io/github/actions/workflow/status/carlelieser/aria/ci.yml?branch=main&logo=github&label=CI" alt="CI Status" />
-  <img src="https://img.shields.io/badge/Platform-Android%20%7C%20iOS-blue" alt="Android | iOS" />
+  <img src="https://img.shields.io/badge/Platform-Android-blue" alt="Android" />
   <img src="https://img.shields.io/badge/License-MIT-green" alt="MIT License" />
 </p>
 
@@ -53,7 +53,6 @@ npx expo start
 Press `w` to open in browser, or run a native build:
 
 ```bash
-npm run ios        # Build and run on iOS
 npm run android    # Build and run on Android
 ```
 
@@ -72,11 +71,9 @@ eas login
 ```bash
 # Development build (with dev client)
 eas build --profile development --platform android
-eas build --profile development --platform ios
 
 # Production build
 eas build --profile production --platform android
-eas build --profile production --platform ios
 ```
 
 </details>
@@ -86,7 +83,6 @@ eas build --profile production --platform ios
 
 ```bash
 npm run build:android
-npm run build:ios
 ```
 
 </details>

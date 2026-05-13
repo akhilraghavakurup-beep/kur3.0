@@ -139,11 +139,12 @@ export class HomeFeedService {
 
 		useHomeFeedStore.setState({ isLoading: true, activeFilterIndex: chipIndex });
 
+		const languageKey = getHomeContentPreferenceCacheKey();
 		const results = await Promise.allSettled(
 			Array.from(this._providers.entries())
 				.filter(([, state]) => state.filterChips.length > 0)
 				.map(async ([id, state]) => {
-					const result = await state.operations.applyFilter(chipText);
+					const result = await state.operations.applyFilter(chipText, languageKey);
 					return { id, result };
 				})
 		);
@@ -188,9 +189,10 @@ export class HomeFeedService {
 
 		useHomeFeedStore.setState({ isLoadingMore: true });
 
+		const languageKey = getHomeContentPreferenceCacheKey();
 		const results = await Promise.allSettled(
 			providersWithMore.map(async ([id, state]) => {
-				const result = await state.operations.loadMore();
+				const result = await state.operations.loadMore(languageKey);
 				return { id, result };
 			})
 		);
@@ -260,7 +262,7 @@ export class HomeFeedService {
 		);
 		const results = await Promise.allSettled(
 			Array.from(this._providers.entries()).map(async ([id, state]) => {
-				const result = await state.operations.getHomeFeed();
+				const result = await state.operations.getHomeFeed(languageKey);
 				return { id, result };
 			})
 		);
@@ -299,7 +301,7 @@ export class HomeFeedService {
 		}
 
 		if (hasAnySuccess) {
-			await this._fillToMinSections();
+			await this._fillToMinSections(languageKey);
 		}
 
 		if (hasAnySuccess) {
@@ -366,12 +368,12 @@ export class HomeFeedService {
 		}
 	}
 
-	private async _fillToMinSections(): Promise<void> {
+	private async _fillToMinSections(languageKey: string): Promise<void> {
 		let totalSections = this._getTotalSectionCount();
 
 		for (const [, state] of this._providers) {
 			while (totalSections < MIN_SECTIONS && state.hasContinuation) {
-				const more = await state.operations.loadMore();
+				const more = await state.operations.loadMore(languageKey);
 				if (!more.success) break;
 				state.sections.push(...more.data.sections);
 				state.hasContinuation = more.data.hasContinuation;

@@ -8,16 +8,6 @@
                  "scheme": "kurmusic",
                  "userInterfaceStyle":  "automatic",
                  "newArchEnabled":  true,
-                 "ios":  {
-                             "supportsTablet":  true,
-                             "bundleIdentifier":  "com.aria.music.app",
-                             "infoPlist":  {
-                                               "UIBackgroundModes":  [
-                                                                         "audio"
-                                                                     ],
-                                               "ITSAppUsesNonExemptEncryption":  false
-                                           }
-                         },
                  "android":  {
                                  "package":  "com.aria.music.app",
                                  "adaptiveIcon":  {

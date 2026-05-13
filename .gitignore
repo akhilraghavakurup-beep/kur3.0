@@ -47,7 +47,6 @@ yarn-error.*
 .env
 .env*.local
 credentials.json
-ios/certs/*
 
 # typescript
 *.tsbuildinfo
@@ -55,14 +54,12 @@ ios/certs/*
 app-example
 
 # generated native folders
-/ios
 /android
 
 .idea/
 
 # Local modules build artifacts
 modules/*/android/build/
-modules/*/ios/build/
 
 # Claude Code
 .ai/

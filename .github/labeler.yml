@@ -29,10 +29,6 @@ android:
     - changed-files:
           - any-glob-to-any-file: 'android/**/*'
 
-ios:
-    - changed-files:
-          - any-glob-to-any-file: 'ios/**/*'
-
 # Test changes
 test:
     - changed-files:
