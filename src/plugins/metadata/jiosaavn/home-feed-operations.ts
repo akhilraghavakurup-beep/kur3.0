@@ -15,7 +15,6 @@ import {
 	type HomeFeedPrioritySection,
 } from '@/src/application/state/settings-store';
 import type {
-	JioSaavnLaunchData,
 	JioSaavnLaunchModule,
 	JioSaavnAlbum,
 	JioSaavnPlaylist,
@@ -66,19 +65,6 @@ const BLACKHOLE_SECTION_PRIORITY = [
 	'jiosaavn-artist-recos',
 ] as const;
 
-const LANGUAGE_TEXT_HINTS: Record<string, string[]> = {
-	malayalam: ['malayalam', 'kerala', 'kochi', 'thiruvananthapuram', 'mollywood', 'mallu'],
-	tamil: ['tamil', 'chennai', 'tamil nadu', 'kollywood'],
-	telugu: ['telugu', 'andhra', 'telangana', 'hyderabad', 'tollywood'],
-	kannada: ['kannada', 'bengaluru', 'bangalore', 'sandalwood'],
-	english: ['english'],
-	punjabi: ['punjabi'],
-	marathi: ['marathi'],
-	bengali: ['bengali'],
-	gujarati: ['gujarati'],
-	hindi: ['hindi', 'bollywood'],
-};
-
 const matchesTitle =
 	(...patterns: string[]) =>
 	(title: string) =>
@@ -111,9 +97,11 @@ function mapPreferenceToApiLanguage(preference: HomeContentPreference): string |
 
 function getPreferredLanguages(): string[] {
 	const preferences = useSettingsStore.getState().homeContentPreferences;
-	return preferences
+	const mapped = preferences
 		.map(mapPreferenceToApiLanguage)
 		.filter((value): value is string => !!value);
+
+	return mapped.length > 0 ? mapped : ['malayalam', 'tamil'];
 }
 
 function getPreferredLanguageHeader(): string {
@@ -122,51 +110,6 @@ function getPreferredLanguageHeader(): string {
 
 function getPreferredLanguageSet(): Set<string> {
 	return new Set(getPreferredLanguages());
-}
-
-function getLanguageHints(languages: Iterable<string>): string[] {
-	const hints = new Set<string>();
-	for (const language of languages) {
-		for (const hint of LANGUAGE_TEXT_HINTS[language] ?? [language]) {
-			hints.add(hint);
-		}
-	}
-	return [...hints];
-}
-
-function collectItemText(item: unknown): string {
-	if (!item || typeof item !== 'object') {
-		return '';
-	}
-
-	const candidate = item as {
-		title?: string | null;
-		name?: string | null;
-		subtitle?: string | null;
-		description?: string | null;
-		language?: string | null;
-		more_info?: {
-			language?: string | null;
-			subtitle?: string | null;
-		} | null;
-	};
-
-	return [
-		candidate.title,
-		candidate.name,
-		candidate.subtitle,
-		candidate.description,
-		candidate.language,
-		candidate.more_info?.language,
-		candidate.more_info?.subtitle,
-	]
-		.filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
-		.join(' ')
-		.toLowerCase();
-}
-
-function hasLanguageHint(text: string, hints: string[]): boolean {
-	return hints.some((hint) => text.includes(hint));
 }
 
 function getItemLanguage(item: unknown): string | null {
@@ -187,39 +130,22 @@ function getItemLanguage(item: unknown): string | null {
 	return language.toString().trim().toLowerCase() || null;
 }
 
-function shouldKeepLaunchItem(
-	item: unknown,
-	preferredLanguages: Set<string>,
-	contextText: string
-): boolean {
+function shouldKeepLaunchItem(item: unknown, preferredLanguages: Set<string>): boolean {
 	const language = getItemLanguage(item);
 	if (!language) {
-		const itemText = collectItemText(item);
-		const selectedHints = getLanguageHints(preferredLanguages);
-		const offLanguageHints = getLanguageHints(
-			Object.keys(LANGUAGE_TEXT_HINTS).filter((candidate) => !preferredLanguages.has(candidate))
-		);
-
-		if (hasLanguageHint(itemText, offLanguageHints)) {
-			return false;
-		}
-
-		return (
-			hasLanguageHint(itemText, selectedHints) ||
-			hasLanguageHint(contextText.toLowerCase(), selectedHints)
-		);
+		return true;
 	}
 
 	if (preferredLanguages.has(language)) {
 		return true;
 	}
 
-	return false;
+	return language === 'english' && preferredLanguages.has('english');
 }
 
-function filterLaunchItems(items: unknown[], contextText: string): unknown[] {
+function filterLaunchItems(items: unknown[]): unknown[] {
 	const preferredLanguages = getPreferredLanguageSet();
-	return items.filter((item) => shouldKeepLaunchItem(item, preferredLanguages, contextText));
+	return items.filter((item) => shouldKeepLaunchItem(item, preferredLanguages));
 }
 
 function mapMixedFeedItems(items: unknown[]): FeedItem[] {
@@ -566,16 +492,7 @@ function prioritizeSections(sections: FeedSection[]): FeedSection[] {
 }
 
 async function buildHomeFeed(client: JioSaavnClient): Promise<HomeFeedData> {
-	const languageHeader = getPreferredLanguageHeader();
-	if (!languageHeader) {
-		return {
-			sections: [],
-			filterChips: [],
-			hasContinuation: false,
-		};
-	}
-
-	const launchData = (await client.getLaunchData(languageHeader)) as JioSaavnLaunchData & {
+	const launchData = (await client.getLaunchData(getPreferredLanguageHeader())) as JioSaavnLaunchData & {
 		collections?: string[];
 		collections_temp?: string[];
 	};
@@ -603,7 +520,7 @@ async function buildHomeFeed(client: JioSaavnClient): Promise<HomeFeedData> {
 			continue;
 		}
 
-		const filteredItems = filterLaunchItems(items, `${title} ${module.subtitle ?? ''}`);
+		const filteredItems = filterLaunchItems(items);
 		if (filteredItems.length === 0) {
 			continue;
 		}

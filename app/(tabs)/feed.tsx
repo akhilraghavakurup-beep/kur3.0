@@ -6,12 +6,10 @@ import {
 	type NativeSyntheticEvent,
 	type NativeScrollEvent,
 } from 'react-native';
-import { router } from 'expo-router';
 import { AlertCircleIcon, MusicIcon } from 'lucide-react-native';
 import { PageLayout } from '@/src/components/ui/page-layout';
 import { PlayerAwareScrollView } from '@/src/components/ui/player-aware-scroll-view';
 import { EmptyState } from '@/src/components/ui/empty-state';
-import { Button } from '@/src/components/ui/button';
 import {
 	FeedCarousel,
 	FeedSectionSkeleton,
@@ -19,6 +17,7 @@ import {
 } from '@/src/components/home';
 import { useHomeFeed } from '@/src/hooks/use-home-feed';
 import { useHomeFeedStore } from '@/src/application/state/home-feed-store';
+import { useAppTheme } from '@/lib/theme';
 
 const useHasCompletedInitialLoad = () => useHomeFeedStore((state) => state.lastFetchedAt !== null);
 
@@ -26,6 +25,7 @@ const PREFETCH_VIEWPORTS = 3;
 const MIN_VISIBLE_SECTIONS = 4;
 
 export default function HomeScreen() {
+	const { colors } = useAppTheme();
 	const hasCompletedInitialLoad = useHasCompletedInitialLoad();
 	const {
 		localSections,
@@ -33,7 +33,6 @@ export default function HomeScreen() {
 		isLoading,
 		error,
 		handleLoadMore,
-		hasSelectedHomeLanguages,
 	} = useHomeFeed();
 
 	const viewportHeight = useRef(0);
@@ -105,26 +104,9 @@ export default function HomeScreen() {
 				onContentSizeChange={handleContentSizeChange}
 				scrollEventThrottle={200}
 			>
-				{!hasSelectedHomeLanguages && (
-					<EmptyState
-						icon={MusicIcon}
-						title={'Choose your languages'}
-						description={'Pick one or more languages so Home can load curated JioSaavn shelves for your taste.'}
-						action={
-							<Button
-								variant={'secondary'}
-								onPress={() => router.push('/settings')}
-								style={styles.languageButton}
-							>
-								Open Settings
-							</Button>
-						}
-					/>
-				)}
+				{showSkeleton && <HomeFeedSkeleton />}
 
-				{hasSelectedHomeLanguages && showSkeleton && <HomeFeedSkeleton />}
-
-				{hasSelectedHomeLanguages && showError && (
+				{showError && (
 					<EmptyState
 						icon={AlertCircleIcon}
 						title={'Something went wrong'}
@@ -132,7 +114,7 @@ export default function HomeScreen() {
 					/>
 				)}
 
-				{hasSelectedHomeLanguages && showEmpty && (
+				{showEmpty && (
 					<EmptyState
 						icon={MusicIcon}
 						title={'Pick your languages'}
@@ -140,7 +122,7 @@ export default function HomeScreen() {
 					/>
 				)}
 
-				{hasSelectedHomeLanguages && hasData && (
+				{hasData && (
 					<View style={styles.content}>
 						{visibleLocalSections.map((section) => (
 							<FeedCarousel key={section.id} section={section} />
@@ -168,9 +150,6 @@ const styles = StyleSheet.create({
 		gap: 18,
 		paddingTop: 4,
 		paddingBottom: 20,
-	},
-	languageButton: {
-		marginTop: 20,
 	},
 });
 

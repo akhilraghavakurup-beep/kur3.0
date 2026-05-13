@@ -7,7 +7,7 @@ import type {
 } from '@plugins/core/interfaces/home-feed-provider';
 import { useHomeFeedStore } from '../state/home-feed-store';
 import { getLogger } from '@shared/services/logger';
-import { useSettingsStore, waitForSettingsHydration } from '../state/settings-store';
+import { waitForSettingsHydration } from '../state/settings-store';
 
 const logger = getLogger('HomeFeedService');
 
@@ -69,10 +69,6 @@ export class HomeFeedService {
 		await this._readyPromise;
 		await waitForSettingsHydration();
 		if (this._providers.size === 0) return;
-		if (useSettingsStore.getState().homeContentPreferences.length === 0) {
-			useHomeFeedStore.getState().reset();
-			return;
-		}
 
 		const { lastFetchedAt } = useHomeFeedStore.getState();
 
@@ -92,10 +88,6 @@ export class HomeFeedService {
 	async refresh(): Promise<void> {
 		await waitForSettingsHydration();
 		if (this._providers.size === 0) return;
-		if (useSettingsStore.getState().homeContentPreferences.length === 0) {
-			useHomeFeedStore.getState().reset();
-			return;
-		}
 
 		useHomeFeedStore.setState({ isRefreshing: true });
 
@@ -105,10 +97,6 @@ export class HomeFeedService {
 	async applyFilter(chipText: string, chipIndex: number): Promise<void> {
 		await waitForSettingsHydration();
 		if (this._providers.size === 0) return;
-		if (useSettingsStore.getState().homeContentPreferences.length === 0) {
-			useHomeFeedStore.getState().reset();
-			return;
-		}
 
 		useHomeFeedStore.setState({ isLoading: true, activeFilterIndex: chipIndex });
 
@@ -149,7 +137,6 @@ export class HomeFeedService {
 	async loadMore(): Promise<void> {
 		await waitForSettingsHydration();
 		if (this._providers.size === 0) return;
-		if (useSettingsStore.getState().homeContentPreferences.length === 0) return;
 
 		if (useHomeFeedStore.getState().isLoadingMore) return;
 

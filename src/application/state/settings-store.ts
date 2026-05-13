@@ -38,17 +38,9 @@ export type HomeFeedPrioritySection =
 	| 'recommended-artist-stations'
 	| 'fresh-hits';
 
-export const DEFAULT_HOME_CONTENT_PREFERENCES: HomeContentPreference[] = [];
-const HOME_CONTENT_PREFERENCE_VALUES: readonly HomeContentPreference[] = [
+export const DEFAULT_HOME_CONTENT_PREFERENCES: HomeContentPreference[] = [
 	'Malayalam',
 	'Tamil',
-	'Telugu',
-	'English',
-	'Kannada',
-	'Punjabi',
-	'Marathi',
-	'Bengali',
-	'Gujarati',
 ];
 export const DEFAULT_HOME_FEED_PRIORITY: HomeFeedPrioritySection[] = [
 	'trending-now',
@@ -129,22 +121,6 @@ const customStorage = {
 	},
 };
 
-function normalizeHomeContentPreferences(preferences: unknown): HomeContentPreference[] {
-	if (!Array.isArray(preferences)) {
-		return [];
-	}
-
-	return Array.from(
-		new Set(
-			preferences.filter(
-				(preference): preference is HomeContentPreference =>
-					typeof preference === 'string' &&
-					HOME_CONTENT_PREFERENCE_VALUES.includes(preference as HomeContentPreference)
-			)
-		)
-	);
-}
-
 let resolveHydration: (() => void) | null = null;
 const hydrationPromise = new Promise<void>((resolve) => {
 	resolveHydration = resolve;
@@ -181,7 +157,11 @@ export const useSettingsStore = create<SettingsState>()(
 				set({ defaultTab: tab });
 			},
 			setHomeContentPreferences: (preferences: HomeContentPreference[]) => {
-				set({ homeContentPreferences: normalizeHomeContentPreferences(preferences) });
+				const normalized = Array.from(new Set(preferences));
+				set({
+					homeContentPreferences:
+						normalized.length > 0 ? normalized : DEFAULT_HOME_CONTENT_PREFERENCES,
+				});
 			},
 			toggleHomeContentPreference: (preference: HomeContentPreference) => {
 				const { homeContentPreferences } = get();
@@ -189,7 +169,10 @@ export const useSettingsStore = create<SettingsState>()(
 					? homeContentPreferences.filter((item) => item !== preference)
 					: [...homeContentPreferences, preference];
 
-				set({ homeContentPreferences: nextPreferences });
+				set({
+					homeContentPreferences:
+						nextPreferences.length > 0 ? nextPreferences : DEFAULT_HOME_CONTENT_PREFERENCES,
+				});
 			},
 			resetHomeContentPreferences: () => {
 				set({ homeContentPreferences: DEFAULT_HOME_CONTENT_PREFERENCES });
@@ -332,7 +315,7 @@ export const useSettingsStore = create<SettingsState>()(
 		}),
 		{
 			name: 'aria-settings-storage',
-			version: 6,
+			version: 4,
 			storage: createJSONStorage(() => customStorage),
 			onRehydrateStorage: () => {
 				return () => {
@@ -341,12 +324,20 @@ export const useSettingsStore = create<SettingsState>()(
 			},
 			migrate: (persistedState) => {
 				const state = persistedState as Partial<SettingsState> | undefined;
+				const nextHomeContentPreferences = state?.homeContentPreferences?.filter(
+					(preference) =>
+						preference !== 'Hindi' &&
+						preference !== 'Bollywood' &&
+						preference !== 'All languages'
+				);
 				return {
 					...state,
 					accentColor: state?.accentColor ?? '#7C3AED',
 					uiStyle: state?.uiStyle ?? 'neo',
-					// Start fresh once so older hidden Hindi/Bollywood snapshots cannot survive.
-					homeContentPreferences: DEFAULT_HOME_CONTENT_PREFERENCES,
+					homeContentPreferences:
+						nextHomeContentPreferences && nextHomeContentPreferences.length > 0
+							? nextHomeContentPreferences
+							: DEFAULT_HOME_CONTENT_PREFERENCES,
 				};
 			},
 		}

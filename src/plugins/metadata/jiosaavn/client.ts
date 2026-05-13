@@ -319,7 +319,6 @@ export class JioSaavnClient {
 				url.searchParams.set(key, String(value));
 			}
 		}
-		const languageCookie = this._buildLanguageCookie(options.language);
 
 		const response = await fetch(url.toString(), {
 			method: 'GET',
@@ -327,7 +326,7 @@ export class JioSaavnClient {
 				Accept: 'application/json, text/plain, */*',
 				'User-Agent':
 					'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36',
-				...(languageCookie ? { cookie: languageCookie } : {}),
+				cookie: this._buildLanguageCookie(options.language),
 			},
 			signal: options.signal,
 		});
@@ -339,15 +338,11 @@ export class JioSaavnClient {
 		return (await response.json()) as T;
 	}
 
-	private _buildLanguageCookie(language?: string): string | undefined {
-		const normalized = (language ?? '')
+	private _buildLanguageCookie(language?: string): string {
+		const normalized = (language ?? 'hindi')
 			.split(',')
 			.map((value) => value.trim().toLowerCase())
 			.filter(Boolean);
-
-		if (normalized.length === 0) {
-			return undefined;
-		}
 
 		return `L=${normalized.join('%2C')}`;
 	}

@@ -44,7 +44,6 @@ import {
 import { useLibraryStore } from '@application/state/library-store';
 import { useLibraryFilterStore } from '@application/state/library-filter-store';
 import { useEqualizerStore } from '@application/state/equalizer-store';
-import { useHomeFeedStore } from '@application/state/home-feed-store';
 import {
 	useSettingsStore,
 	useHomeContentPreferences,
@@ -91,12 +90,12 @@ export default function SettingsScreen() {
 		setPreferredStreamQuality,
 		autoplaySimilarOnQueueEnd,
 		setAutoplaySimilarOnQueueEnd,
-		downloadLocationMode,
-		musicDownloadDirectoryName,
-		customDownloadDirectoryName,
-		setMusicDownloadDirectory,
-		setCustomDownloadDirectory,
-		resetDownloadLocation,
+	downloadLocationMode,
+	musicDownloadDirectoryName,
+	customDownloadDirectoryName,
+	setMusicDownloadDirectory,
+	setCustomDownloadDirectory,
+	resetDownloadLocation,
 	} = useSettingsStore(
 		useShallow((state) => ({
 			themePreference: state.themePreference,
@@ -169,7 +168,7 @@ export default function SettingsScreen() {
 	const homeLanguageLabel =
 		homeContentPreferences.length > 0
 			? homeContentPreferences.join(', ')
-			: 'None selected';
+			: 'Malayalam, Tamil';
 
 	const openEqualizerSheet = useCallback(() => {
 		setEqualizerSheetOpen(true);
@@ -314,8 +313,7 @@ export default function SettingsScreen() {
 			const next = enabled
 				? Array.from(new Set([...homeContentPreferences, language]))
 				: homeContentPreferences.filter((value) => value !== language);
-			setHomeContentPreferences(next);
-			useHomeFeedStore.getState().reset();
+			setHomeContentPreferences(next.length > 0 ? next : ['Malayalam', 'Tamil']);
 		},
 		[homeContentPreferences, homeLanguageOptions, setHomeContentPreferences]
 	);
@@ -437,7 +435,7 @@ export default function SettingsScreen() {
 					<SettingsItem
 						icon={LanguagesIcon}
 						title={'Home languages'}
-						subtitle={`${homeLanguageLabel} - Saved for app restart`}
+						subtitle={`${homeLanguageLabel} · Applies on next app start`}
 						onPress={() => setHomeLanguagesSheetVisible(true)}
 						showChevron
 					/>
@@ -616,7 +614,6 @@ export default function SettingsScreen() {
 				showReset
 				onReset={() => {
 					resetHomeContentPreferences();
-					useHomeFeedStore.getState().reset();
 				}}
 			>
 				{homeLanguageOptions.map((option) => {
@@ -627,7 +624,7 @@ export default function SettingsScreen() {
 							key={option.value}
 							icon={option.icon}
 							title={option.label}
-							subtitle={'Used for Home feed requests'}
+							subtitle={'Used on the next app launch'}
 							rightElement={
 								<Switch
 									value={isEnabled}
