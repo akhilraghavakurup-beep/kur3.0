@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import CookieManager from '@react-native-cookies/cookies';
+import { Platform } from 'react-native';
 import type { StreamQuality } from '@/src/domain/value-objects/audio-source';
 
 export type ThemePreference = 'system' | 'light' | 'dark';
@@ -89,6 +91,33 @@ export const DEFAULT_HOME_FEED_PRIORITY: HomeFeedPrioritySection[] = [
 export const DEFAULT_TAB_ORDER: TabId[] = ['feed', 'library', 'search', 'downloads'];
 export const DEFAULT_ENABLED_TABS: TabId[] = ['feed', 'library', 'search', 'downloads'];
 export const REQUIRED_TABS: TabId[] = [];
+
+/**
+ * Synchronize language preferences with the native cookie jar for JioSaavn.
+ * This ensures that fetch() calls to JioSaavn correctly send the L cookie.
+ */
+export async function syncNativeLanguageCookie(preferences?: HomeContentPreference[]): Promise<void> {
+	try {
+		const header = getHomeContentLanguageHeader(preferences);
+		const cookieValue = `L=${encodeURIComponent(header)}`;
+
+		await CookieManager.set('https://www.jiosaavn.com', {
+			name: 'L',
+			value: encodeURIComponent(header),
+			domain: '.jiosaavn.com',
+			path: '/',
+			version: '1',
+			expires: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+		});
+
+		if (Platform.OS === 'android') {
+			await CookieManager.setFromResponse('https://www.jiosaavn.com', cookieValue);
+		}
+	} catch (error) {
+		// Non-critical, but log it
+		console.error('Failed to sync native language cookie:', error);
+	}
+}
 
 interface SettingsState {
 	themePreference: ThemePreference;
@@ -241,6 +270,7 @@ export const useSettingsStore = create<SettingsState>()(
 			setHomeContentPreferences: (preferences: readonly unknown[]) => {
 				const normalized = normalizeHomeContentPreferences(preferences);
 				set({ homeContentPreferences: normalized });
+				void syncNativeLanguageCookie(normalized);
 				return normalized;
 			},
 			toggleHomeContentPreference: (preference: HomeContentPreference) => {
@@ -249,10 +279,14 @@ export const useSettingsStore = create<SettingsState>()(
 					? homeContentPreferences.filter((item) => item !== preference)
 					: [...homeContentPreferences, preference];
 
-				set({ homeContentPreferences: normalizeHomeContentPreferences(nextPreferences) });
+				const normalized = normalizeHomeContentPreferences(nextPreferences);
+				set({ homeContentPreferences: normalized });
+				void syncNativeLanguageCookie(normalized);
 			},
 			resetHomeContentPreferences: () => {
-				set({ homeContentPreferences: [...DEFAULT_HOME_CONTENT_PREFERENCES] });
+				const defaults = [...DEFAULT_HOME_CONTENT_PREFERENCES];
+				set({ homeContentPreferences: defaults });
+				void syncNativeLanguageCookie(defaults);
 			},
 			setHomeFeedPriority: (priority: HomeFeedPrioritySection[]) => {
 				const next = priority.filter(
@@ -400,6 +434,7 @@ export const useSettingsStore = create<SettingsState>()(
 						state.homeContentPreferences = normalizeHomeContentPreferences(
 							(state as { homeContentPreferences?: unknown[] }).homeContentPreferences
 						);
+						void syncNativeLanguageCookie(state.homeContentPreferences);
 					}
 					resolveHydration?.();
 				};

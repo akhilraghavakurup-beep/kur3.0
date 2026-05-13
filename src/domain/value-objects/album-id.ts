@@ -1,11 +1,6 @@
 import { ok, err, type Result } from '@shared/types/result';
 
-export type AlbumSourceType =
-	| 'youtube-music'
-	| 'local-library'
-	| 'spotify'
-	| 'apple-music'
-	| string;
+export type AlbumSourceType = 'jiosaavn' | 'local-library' | string;
 
 export class AlbumId {
 	private constructor(

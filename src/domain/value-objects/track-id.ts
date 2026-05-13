@@ -1,6 +1,6 @@
 import { ok, err, type Result } from '@shared/types/result';
 
-export type SourceType = 'youtube-music' | 'local-file' | 'spotify' | 'apple-music' | string;
+export type SourceType = 'jiosaavn' | 'local-file' | 'local-library' | string;
 
 export class TrackId {
 	private constructor(

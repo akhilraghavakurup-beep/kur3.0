@@ -76,7 +76,6 @@
                          "expo-system-ui":  "~6.0.9",
                          "expo-video":  "~3.0.15",
                          "expo-web-browser":  "~15.0.10",
-                         "jintr":  "^3.3.1",
                          "lottie-react-native":  "~7.3.1",
                          "lucide-react-native":  "^0.562.0",
                          "music-metadata":  "^11.10.5",
@@ -100,10 +99,8 @@
                          "react-native-web":  "~0.21.2",
                          "react-native-webview":  "^13.16.0",
                          "react-native-worklets":  "^0.7.2",
-                         "shaka-player":  "^4.16.13",
                          "text-encoding":  "^0.7.0",
                          "web-streams-polyfill":  "^4.2.0",
-                         "youtubei.js":  "^16.0.1",
                          "zustand":  "^5.0.9"
                      },
     "devDependencies":  {

@@ -315,6 +315,10 @@ export class JioSaavnClient {
 		const url = new URL(`${WEB_API_BASE_URL}${WEB_API_PATH}`);
 		url.searchParams.set('__call', call);
 
+		if (options.language) {
+			url.searchParams.set('languages', options.language);
+		}
+
 		for (const [key, value] of Object.entries(params)) {
 			if (value !== undefined && value !== null && value !== '') {
 				url.searchParams.set(key, String(value));

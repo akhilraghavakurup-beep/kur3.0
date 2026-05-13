@@ -69,10 +69,7 @@ export function getArtistNames(track: Track): string {
 }
 
 const SOURCE_DISPLAY_NAMES: Record<string, string> = {
-	'youtube-music': 'YouTube Music',
 	jiosaavn: 'JioSaavn',
-	spotify: 'Spotify',
-	'apple-music': 'Apple Music',
 	'local-file': 'Local',
 	'local-library': 'Local',
 };

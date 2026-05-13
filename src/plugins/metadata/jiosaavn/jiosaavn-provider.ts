@@ -22,6 +22,7 @@ import {
 } from '@plugins/core/interfaces/audio-source-provider';
 import type { Result } from '@shared/types/result';
 import { err, ok } from '@shared/types/result';
+import { getHomeContentLanguageHeader } from '@/src/application/state/settings-store';
 import {
 	AUDIO_CAPABILITIES,
 	CONFIG_SCHEMA,
@@ -141,8 +142,9 @@ export class JioSaavnProvider implements MetadataProvider, AudioSourceProvider {
 		}
 
 		try {
-			const stationId = await this.client.createArtistStation(artistName, 'hindi,english');
-			const songs = await this.client.getRadioSongs(stationId, limit, 1, 'hindi,english');
+			const language = getHomeContentLanguageHeader();
+			const stationId = await this.client.createArtistStation(artistName, language);
+			const songs = await this.client.getRadioSongs(stationId, limit, 1, language);
 			return ok(songs.map(mapSong).filter((track): track is Track => !!track));
 		} catch (error) {
 			return err(error instanceof Error ? error : new Error(String(error)));

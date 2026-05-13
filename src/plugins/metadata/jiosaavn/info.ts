@@ -10,6 +10,7 @@ import {
 } from '@plugins/core/interfaces/metadata-provider';
 import type { Result } from '@shared/types/result';
 import { err, ok } from '@shared/types/result';
+import { getHomeContentLanguageHeader } from '@/src/application/state/settings-store';
 import type { JioSaavnClient } from './client';
 import { mapAlbum, mapArtist, mapPlaylist, mapSong, stripSourcePrefix } from './mappers';
 
@@ -72,7 +73,7 @@ export function createInfoOperations(client: JioSaavnClient): InfoOperations {
 				try {
 					artist = await client.getArtist(normalizedId);
 				} catch {
-					artist = await client.getArtistPageDetails(normalizedId, 'hindi,english');
+					artist = await client.getArtistPageDetails(normalizedId, getHomeContentLanguageHeader());
 				}
 				const mapped = mapArtist(artist);
 				if (!mapped) {
@@ -126,7 +127,7 @@ export function createInfoOperations(client: JioSaavnClient): InfoOperations {
 					albums = response.results.map(mapAlbum).filter((album): album is Album => !!album);
 					total = response.total ?? albums.length;
 				} catch {
-					const artistPage = await client.getArtistPageDetails(normalizedId, 'hindi,english');
+					const artistPage = await client.getArtistPageDetails(normalizedId, getHomeContentLanguageHeader());
 					const fallbackAlbums = (artistPage.topAlbums ?? artistPage.singles ?? [])
 						.map(mapAlbum)
 						.filter((album): album is Album => !!album);
