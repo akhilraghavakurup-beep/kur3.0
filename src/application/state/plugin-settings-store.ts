@@ -16,7 +16,6 @@ import type { PluginConfig } from '../../plugins/core/interfaces/base-plugin';
 export const DEFAULT_ENABLED_PLUGINS: string[] = [
 	'jiosaavn',
 	'react-native-track-player',
-	'dash-player',
 	'core-library',
 ];
 

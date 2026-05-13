@@ -33,8 +33,6 @@ interface ProviderSearchResult {
 }
 
 const LANGUAGE_HINTS: Record<string, string[]> = {
-	hindi: ['hindi', 'bollywood', 'indian'],
-	bollywood: ['hindi', 'bollywood', 'indian'],
 	english: ['english'],
 	malayalam: ['malayalam'],
 	tamil: ['tamil'],

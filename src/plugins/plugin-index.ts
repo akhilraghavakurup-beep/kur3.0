@@ -11,7 +11,6 @@ import { PLUGIN_MANIFEST as CORE_LIBRARY_MANIFEST } from './library/core-library
 import { PLUGIN_MANIFEST as LYRICS_MANIFEST } from './lyrics/core/config';
 import { PLUGIN_MANIFEST as JIOSAAVN_MANIFEST } from './metadata/jiosaavn/config';
 import { PLUGIN_MANIFEST as RNTP_MANIFEST } from './playback/react-native-track-player/config';
-import { PLUGIN_MANIFEST as DASH_MANIFEST } from './playback/dash/config';
 
 export const PLUGIN_ENTRIES: PluginManifestEntry[] = [
 	{
@@ -45,14 +44,6 @@ export const PLUGIN_ENTRIES: PluginManifestEntry[] = [
 			const { RNTPPluginModule } =
 				await import('./playback/react-native-track-player/plugin-module');
 			return RNTPPluginModule;
-		},
-		isBuiltIn: true,
-	},
-	{
-		manifest: DASH_MANIFEST,
-		load: async () => {
-			const { DashPlaybackPluginModule } = await import('./playback/dash/plugin-module');
-			return DashPlaybackPluginModule;
 		},
 		isBuiltIn: true,
 	},
