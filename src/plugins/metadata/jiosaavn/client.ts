@@ -1,4 +1,5 @@
 import { getLogger } from '@shared/services/logger';
+import { getHomeContentLanguageCookie } from '@/src/application/state/settings-store';
 import type {
 	JioSaavnAlbum,
 	JioSaavnAlbumSearchResponse,
@@ -339,12 +340,16 @@ export class JioSaavnClient {
 	}
 
 	private _buildLanguageCookie(language?: string): string {
-		const normalized = (language ?? 'hindi')
+		const normalized = (language ?? '')
 			.split(',')
 			.map((value) => value.trim().toLowerCase())
 			.filter(Boolean);
 
-		return `L=${normalized.join('%2C')}`;
+		if (normalized.length === 0) {
+			return getHomeContentLanguageCookie();
+		}
+
+		return `L=${encodeURIComponent(normalized.join(','))}`;
 	}
 
 	private _usesDirectWebApi(): boolean {

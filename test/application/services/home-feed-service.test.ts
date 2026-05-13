@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { useHomeFeedStore } from '@application/state/home-feed-store';
+import { useSettingsStore } from '@application/state/settings-store';
 
 import { HomeFeedService } from '@/src/application/services/home-feed-service';
 
@@ -57,6 +58,7 @@ describe('HomeFeedService', () => {
 	beforeEach(() => {
 		service = new HomeFeedService();
 		useHomeFeedStore.getState().reset();
+		useSettingsStore.getState().setHomeContentPreferences(['Hindi']);
 		vi.useFakeTimers();
 	});
 
@@ -179,6 +181,19 @@ describe('HomeFeedService', () => {
 			await service.fetchHomeFeed({ force: true });
 
 			expect(ops.getHomeFeed).toHaveBeenCalledTimes(2);
+		});
+
+		it('should refetch when selected home languages change', async () => {
+			const ops = createMockHomeFeedOps();
+			service.addHomeFeedProvider('test', ops);
+
+			await service.fetchHomeFeed();
+
+			useSettingsStore.getState().setHomeContentPreferences(['Tamil']);
+			await service.fetchHomeFeed();
+
+			expect(ops.getHomeFeed).toHaveBeenCalledTimes(2);
+			expect(useHomeFeedStore.getState().languageKey).toBe('tamil');
 		});
 
 		it('should resolve once a provider is added after fetchHomeFeed is called', async () => {

@@ -9,6 +9,10 @@ import {
 	useHomeFeedStore,
 } from '@/src/application/state/home-feed-store';
 import { homeFeedService } from '@/src/application/services/home-feed-service';
+import {
+	getHomeContentPreferenceCacheKey,
+	useHomeContentPreferences,
+} from '@/src/application/state/settings-store';
 import { useCuratedContent } from './use-curated-content';
 import { useAppState } from './use-app-state';
 import type { FeedSection, FeedFilterChip } from '@/src/domain/entities/feed-section';
@@ -63,10 +67,15 @@ export function useHomeFeed(): HomeFeedResult {
 	const error = useHomeFeedError();
 	const hasContinuation = useHomeFeedHasContinuation();
 	const curated = useCuratedContent(10);
+	const homeContentPreferences = useHomeContentPreferences();
+	const languageKey = useMemo(
+		() => getHomeContentPreferenceCacheKey(homeContentPreferences),
+		[homeContentPreferences]
+	);
 
 	useAppState({
 		onForeground: () => {
-			homeFeedService.fetchHomeFeed({ force: true });
+			homeFeedService.fetchHomeFeed();
 		},
 	});
 
@@ -75,10 +84,10 @@ export function useHomeFeed(): HomeFeedResult {
 		// complete so the feed screen paints without blocking on async I/O.
 		const task = InteractionManager.runAfterInteractions(() => {
 			useHomeFeedStore.setState({ activeFilterIndex: null });
-			homeFeedService.fetchHomeFeed({ force: true });
+			homeFeedService.fetchHomeFeed();
 		});
 		return () => task.cancel();
-	}, []);
+	}, [languageKey]);
 
 	const localSections = useMemo(() => buildLocalSections(curated), [curated]);
 
@@ -96,7 +105,7 @@ export function useHomeFeed(): HomeFeedResult {
 
 	const handleClearFilter = useCallback(() => {
 		useHomeFeedStore.setState({ activeFilterIndex: null });
-		homeFeedService.fetchHomeFeed({ force: true });
+		homeFeedService.fetchHomeFeed();
 	}, []);
 
 	const handleLoadMore = useCallback(() => {

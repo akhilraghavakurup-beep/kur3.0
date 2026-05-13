@@ -19,6 +19,7 @@ export type PlayerBackground = 'artwork-blur' | 'artwork-solid' | 'theme-color';
 export type DownloadLocationMode = 'music' | 'custom';
 export type UIStyle = 'clean' | 'glow-flow' | 'glass' | 'bold' | 'neo';
 export type HomeContentPreference =
+	| 'Hindi'
 	| 'Malayalam'
 	| 'Tamil'
 	| 'Telugu'
@@ -27,7 +28,13 @@ export type HomeContentPreference =
 	| 'Punjabi'
 	| 'Marathi'
 	| 'Bengali'
-	| 'Gujarati';
+	| 'Gujarati'
+	| 'Bhojpuri'
+	| 'Urdu'
+	| 'Haryanvi'
+	| 'Rajasthani'
+	| 'Odia'
+	| 'Assamese';
 export type HomeFeedPrioritySection =
 	| 'trending-now'
 	| 'top-charts'
@@ -37,6 +44,31 @@ export type HomeFeedPrioritySection =
 	| 'radio-stations'
 	| 'recommended-artist-stations'
 	| 'fresh-hits';
+
+export const HOME_CONTENT_PREFERENCE_VALUES = [
+	'Hindi',
+	'English',
+	'Punjabi',
+	'Tamil',
+	'Telugu',
+	'Marathi',
+	'Gujarati',
+	'Bengali',
+	'Kannada',
+	'Bhojpuri',
+	'Malayalam',
+	'Urdu',
+	'Haryanvi',
+	'Rajasthani',
+	'Odia',
+	'Assamese',
+] as const satisfies readonly HomeContentPreference[];
+
+const HOME_CONTENT_PREFERENCE_SET = new Set<string>(HOME_CONTENT_PREFERENCE_VALUES);
+const HOME_CONTENT_PREFERENCE_ALIASES: Record<string, HomeContentPreference | HomeContentPreference[]> = {
+	'bollywood': 'Hindi',
+	'all languages': [...HOME_CONTENT_PREFERENCE_VALUES],
+};
 
 export const DEFAULT_HOME_CONTENT_PREFERENCES: HomeContentPreference[] = [
 	'Malayalam',
@@ -121,6 +153,58 @@ const customStorage = {
 	},
 };
 
+export function normalizeHomeContentPreferences(
+	preferences: readonly unknown[] | null | undefined
+): HomeContentPreference[] {
+	const normalized: HomeContentPreference[] = [];
+
+	for (const rawPreference of preferences ?? []) {
+		if (typeof rawPreference !== 'string') {
+			continue;
+		}
+
+		const trimmed = rawPreference.trim();
+		const alias = HOME_CONTENT_PREFERENCE_ALIASES[trimmed.toLowerCase()];
+		const mapped = alias
+			? Array.isArray(alias)
+				? alias
+				: [alias]
+			: HOME_CONTENT_PREFERENCE_SET.has(trimmed)
+				? [trimmed as HomeContentPreference]
+				: [];
+
+		for (const preference of mapped) {
+			if (!normalized.includes(preference)) {
+				normalized.push(preference);
+			}
+		}
+	}
+
+	return normalized.length > 0 ? normalized : [...DEFAULT_HOME_CONTENT_PREFERENCES];
+}
+
+export function getHomeContentLanguageHeader(
+	preferences?: readonly unknown[] | null
+): string {
+	return normalizeHomeContentPreferences(
+		preferences ?? useSettingsStore.getState().homeContentPreferences
+	)
+		.map((preference) => preference.toLowerCase())
+		.join(',');
+}
+
+export function getHomeContentLanguageCookie(
+	preferences?: readonly unknown[] | null
+): string {
+	return `L=${encodeURIComponent(getHomeContentLanguageHeader(preferences))}`;
+}
+
+export function getHomeContentPreferenceCacheKey(
+	preferences?: readonly unknown[] | null
+): string {
+	return getHomeContentLanguageHeader(preferences);
+}
+
 let resolveHydration: (() => void) | null = null;
 const hydrationPromise = new Promise<void>((resolve) => {
 	resolveHydration = resolve;
@@ -131,7 +215,7 @@ export const useSettingsStore = create<SettingsState>()(
 		(set, get) => ({
 			themePreference: 'system',
 			defaultTab: 'feed',
-			homeContentPreferences: DEFAULT_HOME_CONTENT_PREFERENCES,
+			homeContentPreferences: [...DEFAULT_HOME_CONTENT_PREFERENCES],
 			homeFeedPriority: DEFAULT_HOME_FEED_PRIORITY,
 			defaultLibraryTab: 'songs',
 			accentColor: '#7C3AED',
@@ -157,11 +241,7 @@ export const useSettingsStore = create<SettingsState>()(
 				set({ defaultTab: tab });
 			},
 			setHomeContentPreferences: (preferences: HomeContentPreference[]) => {
-				const normalized = Array.from(new Set(preferences));
-				set({
-					homeContentPreferences:
-						normalized.length > 0 ? normalized : DEFAULT_HOME_CONTENT_PREFERENCES,
-				});
+				set({ homeContentPreferences: normalizeHomeContentPreferences(preferences) });
 			},
 			toggleHomeContentPreference: (preference: HomeContentPreference) => {
 				const { homeContentPreferences } = get();
@@ -169,13 +249,10 @@ export const useSettingsStore = create<SettingsState>()(
 					? homeContentPreferences.filter((item) => item !== preference)
 					: [...homeContentPreferences, preference];
 
-				set({
-					homeContentPreferences:
-						nextPreferences.length > 0 ? nextPreferences : DEFAULT_HOME_CONTENT_PREFERENCES,
-				});
+				set({ homeContentPreferences: normalizeHomeContentPreferences(nextPreferences) });
 			},
 			resetHomeContentPreferences: () => {
-				set({ homeContentPreferences: DEFAULT_HOME_CONTENT_PREFERENCES });
+				set({ homeContentPreferences: [...DEFAULT_HOME_CONTENT_PREFERENCES] });
 			},
 			setHomeFeedPriority: (priority: HomeFeedPrioritySection[]) => {
 				const next = priority.filter(
@@ -292,7 +369,7 @@ export const useSettingsStore = create<SettingsState>()(
 				set({
 					themePreference: 'system',
 					defaultTab: 'feed',
-					homeContentPreferences: DEFAULT_HOME_CONTENT_PREFERENCES,
+					homeContentPreferences: [...DEFAULT_HOME_CONTENT_PREFERENCES],
 					homeFeedPriority: DEFAULT_HOME_FEED_PRIORITY,
 					defaultLibraryTab: 'songs',
 					accentColor: '#7C3AED',
@@ -315,7 +392,7 @@ export const useSettingsStore = create<SettingsState>()(
 		}),
 		{
 			name: 'aria-settings-storage',
-			version: 4,
+			version: 5,
 			storage: createJSONStorage(() => customStorage),
 			onRehydrateStorage: () => {
 				return () => {
@@ -324,20 +401,14 @@ export const useSettingsStore = create<SettingsState>()(
 			},
 			migrate: (persistedState) => {
 				const state = persistedState as Partial<SettingsState> | undefined;
-				const nextHomeContentPreferences = state?.homeContentPreferences?.filter(
-					(preference) =>
-						preference !== 'Hindi' &&
-						preference !== 'Bollywood' &&
-						preference !== 'All languages'
-				);
 				return {
 					...state,
 					accentColor: state?.accentColor ?? '#7C3AED',
 					uiStyle: state?.uiStyle ?? 'neo',
-					homeContentPreferences:
-						nextHomeContentPreferences && nextHomeContentPreferences.length > 0
-							? nextHomeContentPreferences
-							: DEFAULT_HOME_CONTENT_PREFERENCES,
+					homeContentPreferences: normalizeHomeContentPreferences(
+						(state as { homeContentPreferences?: unknown[] } | undefined)
+							?.homeContentPreferences
+					),
 				};
 			},
 		}

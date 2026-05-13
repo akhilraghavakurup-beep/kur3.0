@@ -33,6 +33,7 @@ interface ProviderSearchResult {
 }
 
 const LANGUAGE_HINTS: Record<string, string[]> = {
+	hindi: ['hindi', 'bollywood', 'indian'],
 	bollywood: ['hindi', 'bollywood', 'indian'],
 	english: ['english'],
 	malayalam: ['malayalam'],
@@ -43,6 +44,12 @@ const LANGUAGE_HINTS: Record<string, string[]> = {
 	marathi: ['marathi'],
 	bengali: ['bengali', 'bangla'],
 	gujarati: ['gujarati'],
+	bhojpuri: ['bhojpuri'],
+	urdu: ['urdu'],
+	haryanvi: ['haryanvi'],
+	rajasthani: ['rajasthani'],
+	odia: ['odia'],
+	assamese: ['assamese'],
 };
 
 interface SuggestionCandidate {

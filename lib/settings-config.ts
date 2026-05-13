@@ -42,15 +42,22 @@ export const HOME_CONTENT_PREFERENCE_OPTIONS: {
 	label: string;
 	icon: LucideIcon;
 }[] = [
-	{ value: 'Bengali', label: 'Bengali', icon: MusicIcon },
+	{ value: 'Hindi', label: 'Hindi', icon: MusicIcon },
 	{ value: 'English', label: 'English', icon: MusicIcon },
-	{ value: 'Gujarati', label: 'Gujarati', icon: MusicIcon },
-	{ value: 'Kannada', label: 'Kannada', icon: MusicIcon },
-	{ value: 'Malayalam', label: 'Malayalam', icon: MusicIcon },
-	{ value: 'Marathi', label: 'Marathi', icon: MusicIcon },
 	{ value: 'Punjabi', label: 'Punjabi', icon: MusicIcon },
 	{ value: 'Tamil', label: 'Tamil', icon: MusicIcon },
 	{ value: 'Telugu', label: 'Telugu', icon: MusicIcon },
+	{ value: 'Marathi', label: 'Marathi', icon: MusicIcon },
+	{ value: 'Gujarati', label: 'Gujarati', icon: MusicIcon },
+	{ value: 'Bengali', label: 'Bengali', icon: MusicIcon },
+	{ value: 'Kannada', label: 'Kannada', icon: MusicIcon },
+	{ value: 'Bhojpuri', label: 'Bhojpuri', icon: MusicIcon },
+	{ value: 'Malayalam', label: 'Malayalam', icon: MusicIcon },
+	{ value: 'Urdu', label: 'Urdu', icon: MusicIcon },
+	{ value: 'Haryanvi', label: 'Haryanvi', icon: MusicIcon },
+	{ value: 'Rajasthani', label: 'Rajasthani', icon: MusicIcon },
+	{ value: 'Odia', label: 'Odia', icon: MusicIcon },
+	{ value: 'Assamese', label: 'Assamese', icon: MusicIcon },
 ];
 
 export const LIBRARY_TAB_OPTIONS: { value: LibraryTabId; label: string; icon: LucideIcon }[] = [

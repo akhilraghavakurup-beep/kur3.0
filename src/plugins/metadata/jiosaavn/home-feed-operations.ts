@@ -10,8 +10,8 @@ import type {
 } from '@plugins/core/interfaces/home-feed-provider';
 import { err, ok, type Result } from '@shared/types/result';
 import {
+	getHomeContentLanguageHeader,
 	useSettingsStore,
-	type HomeContentPreference,
 	type HomeFeedPrioritySection,
 } from '@/src/application/state/settings-store';
 import type {
@@ -69,84 +69,6 @@ const matchesTitle =
 	(...patterns: string[]) =>
 	(title: string) =>
 		patterns.some((pattern) => title.toLowerCase().includes(pattern));
-
-function mapPreferenceToApiLanguage(preference: HomeContentPreference): string | null {
-	switch (preference) {
-		case 'Malayalam':
-			return 'malayalam';
-		case 'Tamil':
-			return 'tamil';
-		case 'Telugu':
-			return 'telugu';
-		case 'English':
-			return 'english';
-		case 'Kannada':
-			return 'kannada';
-		case 'Punjabi':
-			return 'punjabi';
-		case 'Marathi':
-			return 'marathi';
-		case 'Bengali':
-			return 'bengali';
-		case 'Gujarati':
-			return 'gujarati';
-		default:
-			return null;
-	}
-}
-
-function getPreferredLanguages(): string[] {
-	const preferences = useSettingsStore.getState().homeContentPreferences;
-	const mapped = preferences
-		.map(mapPreferenceToApiLanguage)
-		.filter((value): value is string => !!value);
-
-	return mapped.length > 0 ? mapped : ['malayalam', 'tamil'];
-}
-
-function getPreferredLanguageHeader(): string {
-	return getPreferredLanguages().join(',');
-}
-
-function getPreferredLanguageSet(): Set<string> {
-	return new Set(getPreferredLanguages());
-}
-
-function getItemLanguage(item: unknown): string | null {
-	if (!item || typeof item !== 'object') {
-		return null;
-	}
-
-	const candidate = item as {
-		language?: string | null;
-		more_info?: { language?: string | null } | null;
-	};
-
-	const language = candidate.language ?? candidate.more_info?.language ?? null;
-	if (!language) {
-		return null;
-	}
-
-	return language.toString().trim().toLowerCase() || null;
-}
-
-function shouldKeepLaunchItem(item: unknown, preferredLanguages: Set<string>): boolean {
-	const language = getItemLanguage(item);
-	if (!language) {
-		return true;
-	}
-
-	if (preferredLanguages.has(language)) {
-		return true;
-	}
-
-	return language === 'english' && preferredLanguages.has('english');
-}
-
-function filterLaunchItems(items: unknown[]): unknown[] {
-	const preferredLanguages = getPreferredLanguageSet();
-	return items.filter((item) => shouldKeepLaunchItem(item, preferredLanguages));
-}
 
 function mapMixedFeedItems(items: unknown[]): FeedItem[] {
 	const mapped: FeedItem[] = [];
@@ -492,7 +414,7 @@ function prioritizeSections(sections: FeedSection[]): FeedSection[] {
 }
 
 async function buildHomeFeed(client: JioSaavnClient): Promise<HomeFeedData> {
-	const launchData = (await client.getLaunchData(getPreferredLanguageHeader())) as JioSaavnLaunchData & {
+	const launchData = (await client.getLaunchData(getHomeContentLanguageHeader())) as JioSaavnLaunchData & {
 		collections?: string[];
 		collections_temp?: string[];
 	};
@@ -520,18 +442,13 @@ async function buildHomeFeed(client: JioSaavnClient): Promise<HomeFeedData> {
 			continue;
 		}
 
-		const filteredItems = filterLaunchItems(items);
-		if (filteredItems.length === 0) {
-			continue;
-		}
-
 		const definition = SECTION_DEFINITIONS.find(
 			(candidate) =>
 				(candidate.key === moduleKey || candidate.key.startsWith('promo:')) &&
 				candidate.titleMatcher(title)
 		);
 
-		const mappedItems = definition ? definition.mapItems(filteredItems) : mapAnyFeedItems(filteredItems);
+		const mappedItems = definition ? definition.mapItems(items) : mapAnyFeedItems(items);
 		const section = createSection(
 			moduleKey,
 			title,

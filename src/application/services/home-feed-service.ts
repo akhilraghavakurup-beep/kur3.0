@@ -5,9 +5,12 @@ import type {
 	HomeFeedOperations,
 	PlaylistTracksPage,
 } from '@plugins/core/interfaces/home-feed-provider';
-import { useHomeFeedStore } from '../state/home-feed-store';
+import { useHomeFeedStore, waitForHomeFeedHydration } from '../state/home-feed-store';
 import { getLogger } from '@shared/services/logger';
-import { waitForSettingsHydration } from '../state/settings-store';
+import {
+	getHomeContentPreferenceCacheKey,
+	waitForSettingsHydration,
+} from '../state/settings-store';
 
 const logger = getLogger('HomeFeedService');
 
@@ -68,9 +71,18 @@ export class HomeFeedService {
 	async fetchHomeFeed({ force = false } = {}): Promise<void> {
 		await this._readyPromise;
 		await waitForSettingsHydration();
+		await waitForHomeFeedHydration();
 		if (this._providers.size === 0) return;
 
-		const { lastFetchedAt } = useHomeFeedStore.getState();
+		const languageKey = getHomeContentPreferenceCacheKey();
+		this._prepareLanguageCache(languageKey);
+
+		const { sections, lastFetchedAt } = useHomeFeedStore.getState();
+
+		if (!force && sections.length > 0 && lastFetchedAt) {
+			logger.debug('Home feed cache matches selected languages, skipping fetch');
+			return;
+		}
 
 		if (!force && lastFetchedAt) {
 			const elapsed = Date.now() - lastFetchedAt;
@@ -82,20 +94,46 @@ export class HomeFeedService {
 
 		useHomeFeedStore.setState({ isLoading: true, error: null });
 
-		await this._fetchAllProviders({ isLoading: false });
+		await this._fetchAllProviders({ isLoading: false }, languageKey);
 	}
 
 	async refresh(): Promise<void> {
 		await waitForSettingsHydration();
+		await waitForHomeFeedHydration();
 		if (this._providers.size === 0) return;
 
+		const languageKey = getHomeContentPreferenceCacheKey();
+		this._prepareLanguageCache(languageKey);
 		useHomeFeedStore.setState({ isRefreshing: true });
 
-		await this._fetchAllProviders({ isRefreshing: false });
+		await this._fetchAllProviders({ isRefreshing: false }, languageKey);
+	}
+
+	async handleLanguagePreferencesChanged(): Promise<void> {
+		await this._readyPromise;
+		await waitForSettingsHydration();
+		await waitForHomeFeedHydration();
+
+		const languageKey = getHomeContentPreferenceCacheKey();
+		this._clearProviderData();
+		useHomeFeedStore.setState({
+			sections: [],
+			filterChips: [],
+			activeFilterIndex: null,
+			hasContinuation: false,
+			error: null,
+			lastFetchedAt: null,
+			languageKey,
+		});
+
+		if (this._providers.size > 0) {
+			await this.fetchHomeFeed({ force: true });
+		}
 	}
 
 	async applyFilter(chipText: string, chipIndex: number): Promise<void> {
 		await waitForSettingsHydration();
+		await waitForHomeFeedHydration();
 		if (this._providers.size === 0) return;
 
 		useHomeFeedStore.setState({ isLoading: true, activeFilterIndex: chipIndex });
@@ -136,6 +174,7 @@ export class HomeFeedService {
 
 	async loadMore(): Promise<void> {
 		await waitForSettingsHydration();
+		await waitForHomeFeedHydration();
 		if (this._providers.size === 0) return;
 
 		if (useHomeFeedStore.getState().isLoadingMore) return;
@@ -178,6 +217,7 @@ export class HomeFeedService {
 	async getPlaylistTracks(playlistId: string): Promise<Result<PlaylistTracksPage, Error>> {
 		await this._readyPromise;
 		await waitForSettingsHydration();
+		await waitForHomeFeedHydration();
 
 		for (const [id, state] of this._providers) {
 			const result = await state.operations.getPlaylistTracks(playlistId);
@@ -191,6 +231,7 @@ export class HomeFeedService {
 	async loadMorePlaylistTracks(): Promise<Result<PlaylistTracksPage, Error>> {
 		await this._readyPromise;
 		await waitForSettingsHydration();
+		await waitForHomeFeedHydration();
 
 		for (const [id, state] of this._providers) {
 			const result = await state.operations.loadMorePlaylistTracks();
@@ -202,8 +243,20 @@ export class HomeFeedService {
 	}
 
 	private async _fetchAllProviders(
-		callerState: Partial<{ isLoading: boolean; isRefreshing: boolean }>
+		callerState: Partial<{ isLoading: boolean; isRefreshing: boolean }>,
+		languageKey: string
 	): Promise<void> {
+		const previousStoreState = useHomeFeedStore.getState();
+		const previousProviderState = new Map(
+			Array.from(this._providers.entries()).map(([id, state]) => [
+				id,
+				{
+					sections: state.sections,
+					filterChips: state.filterChips,
+					hasContinuation: state.hasContinuation,
+				},
+			])
+		);
 		const results = await Promise.allSettled(
 			Array.from(this._providers.entries()).map(async ([id, state]) => {
 				const result = await state.operations.getHomeFeed();
@@ -253,16 +306,62 @@ export class HomeFeedService {
 				...this._buildMergedState(),
 				...callerState,
 				lastFetchedAt: Date.now(),
+				languageKey,
 				activeFilterIndex: null,
 			});
 		} else {
+			for (const [id, previous] of previousProviderState.entries()) {
+				const state = this._providers.get(id);
+				if (!state) continue;
+				state.sections = previous.sections;
+				state.filterChips = previous.filterChips;
+				state.hasContinuation = previous.hasContinuation;
+			}
+
+			const hasCachedSections =
+				previousStoreState.languageKey === languageKey &&
+				previousStoreState.sections.length > 0;
+
 			useHomeFeedStore.setState({
-				...this._buildMergedState(),
+				...(hasCachedSections
+					? {
+							sections: previousStoreState.sections,
+							filterChips: previousStoreState.filterChips,
+							hasContinuation: previousStoreState.hasContinuation,
+						}
+					: this._buildMergedState()),
 				isLoading: false,
 				isRefreshing: false,
 				isLoadingMore: false,
-				error: 'Failed to load home feed from all providers',
+				languageKey,
+				error: hasCachedSections ? null : 'Failed to load home feed from all providers',
 			});
+		}
+	}
+
+	private _prepareLanguageCache(languageKey: string): void {
+		const state = useHomeFeedStore.getState();
+		if (state.languageKey === languageKey) {
+			return;
+		}
+
+		this._clearProviderData();
+		useHomeFeedStore.setState({
+			sections: [],
+			filterChips: [],
+			activeFilterIndex: null,
+			hasContinuation: false,
+			error: null,
+			lastFetchedAt: null,
+			languageKey,
+		});
+	}
+
+	private _clearProviderData(): void {
+		for (const [, state] of this._providers) {
+			state.sections = [];
+			state.filterChips = [];
+			state.hasContinuation = false;
 		}
 	}
 

@@ -57,6 +57,7 @@ import { useFactoryReset } from '@/src/hooks/use-factory-reset';
 import { useToast } from '@/src/hooks/use-toast';
 import Constants from 'expo-constants';
 import { permissionService } from '@/src/application/services/permission-service';
+import { homeFeedService } from '@/src/application/services/home-feed-service';
 
 export default function SettingsScreen() {
 	const homeContentPreferences = useHomeContentPreferences();
@@ -204,6 +205,7 @@ export default function SettingsScreen() {
 	const confirmResetSettings = () => {
 		useSettingsStore.getState().resetAllSettings();
 		setResetSettingsDialogVisible(false);
+		void homeFeedService.handleLanguagePreferencesChanged();
 		success('Settings reset', 'All settings have been restored to defaults');
 	};
 
@@ -313,7 +315,8 @@ export default function SettingsScreen() {
 			const next = enabled
 				? Array.from(new Set([...homeContentPreferences, language]))
 				: homeContentPreferences.filter((value) => value !== language);
-			setHomeContentPreferences(next.length > 0 ? next : ['Malayalam', 'Tamil']);
+			setHomeContentPreferences(next);
+			void homeFeedService.handleLanguagePreferencesChanged();
 		},
 		[homeContentPreferences, homeLanguageOptions, setHomeContentPreferences]
 	);
@@ -435,7 +438,7 @@ export default function SettingsScreen() {
 					<SettingsItem
 						icon={LanguagesIcon}
 						title={'Home languages'}
-						subtitle={`${homeLanguageLabel} · Applies on next app start`}
+						subtitle={`${homeLanguageLabel} - Updates home suggestions`}
 						onPress={() => setHomeLanguagesSheetVisible(true)}
 						showChevron
 					/>
@@ -614,6 +617,7 @@ export default function SettingsScreen() {
 				showReset
 				onReset={() => {
 					resetHomeContentPreferences();
+					void homeFeedService.handleLanguagePreferencesChanged();
 				}}
 			>
 				{homeLanguageOptions.map((option) => {
@@ -624,7 +628,7 @@ export default function SettingsScreen() {
 							key={option.value}
 							icon={option.icon}
 							title={option.label}
-							subtitle={'Used on the next app launch'}
+							subtitle={'Used for home suggestions'}
 							rightElement={
 								<Switch
 									value={isEnabled}
