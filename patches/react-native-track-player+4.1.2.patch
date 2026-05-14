@@ -499,8 +499,8 @@ index afa6b0f..6c5c989 100644
 +        headlessJsTaskContext.startTask(taskConfig)
 +    }
 +
-+    private fun getTaskConfig(intent: Intent?): com.facebook.react.jstasks.HeadlessJsTaskConfig {
-+        return com.facebook.react.jstasks.HeadlessJsTaskConfig(TASK_KEY, Arguments.createMap(), 0, true)
++    private fun getTaskConfig(intent: android.content.Intent?): com.facebook.react.jstasks.HeadlessJsTaskConfig {
++        return com.facebook.react.jstasks.HeadlessJsTaskConfig("TrackPlayerTask", Arguments.createMap(), 0, true)
 +    }
 +
 +    private val receiver = object : android.content.BroadcastReceiver() {
