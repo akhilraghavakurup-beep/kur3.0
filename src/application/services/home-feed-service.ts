@@ -9,6 +9,8 @@ import { useHomeFeedStore, waitForHomeFeedHydration } from '../state/home-feed-s
 import { getLogger } from '@shared/services/logger';
 import {
 	getHomeContentPreferenceCacheKey,
+	normalizeHomeContentPreferences,
+	syncNativeLanguageCookie,
 	waitForSettingsHydration,
 } from '../state/settings-store';
 
@@ -74,6 +76,8 @@ export class HomeFeedService {
 		await waitForHomeFeedHydration();
 		if (this._providers.size === 0) return;
 
+		await syncNativeLanguageCookie();
+
 		const languageKey = getHomeContentPreferenceCacheKey();
 		this._prepareLanguageCache(languageKey);
 
@@ -114,7 +118,10 @@ export class HomeFeedService {
 		await waitForSettingsHydration();
 		await waitForHomeFeedHydration();
 
-		const languageKey = getHomeContentPreferenceCacheKey(preferences);
+		const normalized = normalizeHomeContentPreferences(preferences);
+		await syncNativeLanguageCookie(normalized);
+
+		const languageKey = getHomeContentPreferenceCacheKey(normalized);
 		this._clearProviderData();
 		useHomeFeedStore.setState({
 			sections: [],

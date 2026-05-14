@@ -51,6 +51,15 @@ vi.mock('expo-router', () => ({
 	},
 }));
 
+vi.mock('@react-native-cookies/cookies', () => ({
+	default: {
+		set: vi.fn().mockResolvedValue(true),
+		setFromResponse: vi.fn().mockResolvedValue(true),
+		get: vi.fn().mockResolvedValue({}),
+		clearAll: vi.fn().mockResolvedValue(true),
+	},
+}));
+
 vi.mock('@react-native-async-storage/async-storage', () => ({
 	default: {
 		getItem: vi.fn(),

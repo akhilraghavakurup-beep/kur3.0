@@ -143,9 +143,11 @@ interface SettingsState {
 
 	setThemePreference: (preference: ThemePreference) => void;
 	setDefaultTab: (tab: DefaultTab) => void;
-	setHomeContentPreferences: (preferences: readonly unknown[]) => HomeContentPreference[];
-	toggleHomeContentPreference: (preference: HomeContentPreference) => void;
-	resetHomeContentPreferences: () => void;
+	setHomeContentPreferences: (
+		preferences: readonly unknown[]
+	) => Promise<HomeContentPreference[]>;
+	toggleHomeContentPreference: (preference: HomeContentPreference) => Promise<void>;
+	resetHomeContentPreferences: () => Promise<void>;
 	setHomeFeedPriority: (priority: HomeFeedPrioritySection[]) => void;
 	moveHomeFeedPriorityUp: (section: HomeFeedPrioritySection) => void;
 	moveHomeFeedPriorityDown: (section: HomeFeedPrioritySection) => void;
@@ -168,7 +170,7 @@ interface SettingsState {
 	setMusicDownloadDirectory: (uri: string, name: string) => void;
 	setCustomDownloadDirectory: (uri: string, name: string) => void;
 	resetDownloadLocation: () => void;
-	resetAllSettings: () => void;
+	resetAllSettings: () => Promise<void>;
 }
 
 const customStorage = {
@@ -267,13 +269,13 @@ export const useSettingsStore = create<SettingsState>()(
 			setDefaultTab: (tab: DefaultTab) => {
 				set({ defaultTab: tab });
 			},
-			setHomeContentPreferences: (preferences: readonly unknown[]) => {
+			setHomeContentPreferences: async (preferences: readonly unknown[]) => {
 				const normalized = normalizeHomeContentPreferences(preferences);
 				set({ homeContentPreferences: normalized });
-				void syncNativeLanguageCookie(normalized);
+				await syncNativeLanguageCookie(normalized);
 				return normalized;
 			},
-			toggleHomeContentPreference: (preference: HomeContentPreference) => {
+			toggleHomeContentPreference: async (preference: HomeContentPreference) => {
 				const { homeContentPreferences } = get();
 				const nextPreferences = homeContentPreferences.includes(preference)
 					? homeContentPreferences.filter((item) => item !== preference)
@@ -281,12 +283,12 @@ export const useSettingsStore = create<SettingsState>()(
 
 				const normalized = normalizeHomeContentPreferences(nextPreferences);
 				set({ homeContentPreferences: normalized });
-				void syncNativeLanguageCookie(normalized);
+				await syncNativeLanguageCookie(normalized);
 			},
-			resetHomeContentPreferences: () => {
+			resetHomeContentPreferences: async () => {
 				const defaults = [...DEFAULT_HOME_CONTENT_PREFERENCES];
 				set({ homeContentPreferences: defaults });
-				void syncNativeLanguageCookie(defaults);
+				await syncNativeLanguageCookie(defaults);
 			},
 			setHomeFeedPriority: (priority: HomeFeedPrioritySection[]) => {
 				const next = priority.filter(
@@ -399,11 +401,12 @@ export const useSettingsStore = create<SettingsState>()(
 					customDownloadDirectoryName: null,
 				});
 			},
-			resetAllSettings: () => {
+			resetAllSettings: async () => {
+				const defaults = [...DEFAULT_HOME_CONTENT_PREFERENCES];
 				set({
 					themePreference: 'system',
 					defaultTab: 'feed',
-					homeContentPreferences: [...DEFAULT_HOME_CONTENT_PREFERENCES],
+					homeContentPreferences: defaults,
 					homeFeedPriority: DEFAULT_HOME_FEED_PRIORITY,
 					defaultLibraryTab: 'songs',
 					accentColor: '#7C3AED',
@@ -422,6 +425,7 @@ export const useSettingsStore = create<SettingsState>()(
 					customDownloadDirectoryUri: null,
 					customDownloadDirectoryName: null,
 				});
+				await syncNativeLanguageCookie(defaults);
 			},
 		}),
 		{
@@ -429,12 +433,12 @@ export const useSettingsStore = create<SettingsState>()(
 			version: 6,
 			storage: createJSONStorage(() => customStorage),
 			onRehydrateStorage: () => {
-				return (state) => {
+				return async (state) => {
 					if (state) {
 						state.homeContentPreferences = normalizeHomeContentPreferences(
 							(state as { homeContentPreferences?: unknown[] }).homeContentPreferences
 						);
-						void syncNativeLanguageCookie(state.homeContentPreferences);
+						await syncNativeLanguageCookie(state.homeContentPreferences);
 					}
 					resolveHydration?.();
 				};

@@ -202,8 +202,8 @@ export default function SettingsScreen() {
 		setResetSettingsDialogVisible(true);
 	};
 
-	const confirmResetSettings = () => {
-		useSettingsStore.getState().resetAllSettings();
+	const confirmResetSettings = async () => {
+		await useSettingsStore.getState().resetAllSettings();
 		setResetSettingsDialogVisible(false);
 		void homeFeedService.handleLanguagePreferencesChanged(DEFAULT_HOME_CONTENT_PREFERENCES);
 		success('Settings reset', 'All settings have been restored to defaults');
@@ -319,8 +319,8 @@ export default function SettingsScreen() {
 		[]
 	);
 
-	const handleApplyHomeLanguages = useCallback(() => {
-		const normalized = setHomeContentPreferences(draftHomeLanguages);
+	const handleApplyHomeLanguages = useCallback(async () => {
+		const normalized = await setHomeContentPreferences(draftHomeLanguages);
 		setHomeLanguagesSheetVisible(false);
 		void homeFeedService.handleLanguagePreferencesChanged(normalized);
 		if (draftHomeLanguages.length === 0) {
