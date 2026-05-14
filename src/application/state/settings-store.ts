@@ -135,6 +135,7 @@ interface SettingsState {
 	uiStyle: UIStyle;
 	preferredStreamQuality: StreamQuality;
 	autoplaySimilarOnQueueEnd: boolean;
+	autoResumeOnBluetooth: boolean;
 	downloadLocationMode: DownloadLocationMode;
 	musicDownloadDirectoryUri: string | null;
 	musicDownloadDirectoryName: string | null;
@@ -166,6 +167,7 @@ interface SettingsState {
 	setUIStyle: (style: UIStyle) => void;
 	setPreferredStreamQuality: (quality: StreamQuality) => void;
 	setAutoplaySimilarOnQueueEnd: (enabled: boolean) => void;
+	setAutoResumeOnBluetooth: (enabled: boolean) => void;
 	setDownloadLocationMode: (mode: DownloadLocationMode) => void;
 	setMusicDownloadDirectory: (uri: string, name: string) => void;
 	setCustomDownloadDirectory: (uri: string, name: string) => void;
@@ -257,6 +259,7 @@ export const useSettingsStore = create<SettingsState>()(
 			uiStyle: 'neo',
 			preferredStreamQuality: 'high',
 			autoplaySimilarOnQueueEnd: true,
+			autoResumeOnBluetooth: false,
 			downloadLocationMode: 'music',
 			musicDownloadDirectoryUri: null,
 			musicDownloadDirectoryName: null,
@@ -377,6 +380,9 @@ export const useSettingsStore = create<SettingsState>()(
 			setAutoplaySimilarOnQueueEnd: (enabled: boolean) => {
 				set({ autoplaySimilarOnQueueEnd: enabled });
 			},
+			setAutoResumeOnBluetooth: (enabled: boolean) => {
+				set({ autoResumeOnBluetooth: enabled });
+			},
 			setDownloadLocationMode: (mode: DownloadLocationMode) => {
 				set({ downloadLocationMode: mode });
 			},
@@ -419,6 +425,7 @@ export const useSettingsStore = create<SettingsState>()(
 					uiStyle: 'neo',
 					preferredStreamQuality: 'high',
 					autoplaySimilarOnQueueEnd: true,
+					autoResumeOnBluetooth: false,
 					downloadLocationMode: 'music',
 					musicDownloadDirectoryUri: null,
 					musicDownloadDirectoryName: null,

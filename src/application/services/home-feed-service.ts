@@ -1,3 +1,4 @@
+import { NativeModules, Platform } from 'react-native';
 import type { FeedSection, FeedFilterChip } from '@domain/entities/feed-section';
 import type { Result } from '@shared/types/result';
 import { err } from '@shared/types/result';
@@ -16,7 +17,9 @@ import {
 
 const logger = getLogger('HomeFeedService');
 
-const STALENESS_THRESHOLD_MS = 10 * 60 * 1000;
+const { TrackPlayerModule } = NativeModules;
+
+export class HomeFeedService {
 const MIN_SECTIONS = 5;
 
 interface ProviderState {

@@ -91,6 +91,8 @@ export default function SettingsScreen() {
 		setPreferredStreamQuality,
 		autoplaySimilarOnQueueEnd,
 		setAutoplaySimilarOnQueueEnd,
+		autoResumeOnBluetooth,
+		setAutoResumeOnBluetooth,
 		downloadLocationMode,
 		musicDownloadDirectoryName,
 		customDownloadDirectoryName,
@@ -119,6 +121,8 @@ export default function SettingsScreen() {
 			setPreferredStreamQuality: state.setPreferredStreamQuality,
 			autoplaySimilarOnQueueEnd: state.autoplaySimilarOnQueueEnd,
 			setAutoplaySimilarOnQueueEnd: state.setAutoplaySimilarOnQueueEnd,
+			autoResumeOnBluetooth: state.autoResumeOnBluetooth,
+			setAutoResumeOnBluetooth: state.setAutoResumeOnBluetooth,
 			downloadLocationMode: state.downloadLocationMode,
 			musicDownloadDirectoryName: state.musicDownloadDirectoryName,
 			customDownloadDirectoryName: state.customDownloadDirectoryName,
@@ -155,6 +159,16 @@ export default function SettingsScreen() {
 		),
 		[autoplaySimilarOnQueueEnd, setAutoplaySimilarOnQueueEnd]
 	);
+	const autoResumeSwitch = useMemo(
+		() => (
+			<Switch
+				value={autoResumeOnBluetooth}
+				onValueChange={setAutoResumeOnBluetooth}
+			/>
+		),
+		[autoResumeOnBluetooth, setAutoResumeOnBluetooth]
+	);
+
 	const { success } = useToast();
 	const [equalizerSheetOpen, setEqualizerSheetOpen] = useState(false);
 	const [clearLibraryDialogVisible, setClearLibraryDialogVisible] = useState(false);
@@ -438,6 +452,13 @@ export default function SettingsScreen() {
 						rightElement={autoplaySimilarSwitch}
 						onPress={() => setAutoplaySimilarOnQueueEnd(!autoplaySimilarOnQueueEnd)}
 					/>
+					<SettingsItem
+						icon={MusicIcon}
+						title={'Auto-resume on Bluetooth'}
+						subtitle={'Automatically resume playback when connecting to car or headset'}
+						rightElement={autoResumeSwitch}
+						onPress={() => setAutoResumeOnBluetooth(!autoResumeOnBluetooth)}
+					/>
 					<SettingsSelect
 						icon={MusicIcon}
 						title={'Stream quality'}
@@ -550,7 +571,7 @@ export default function SettingsScreen() {
 					/>
 					<SettingsItem icon={InfoIcon} title={'Developed by'} subtitle={'Kurup'} />
 					<SettingsItem icon={InfoIcon} title={'Tested by'} subtitle={'Nemo'} />
-					<SettingsItem icon={InfoIcon} title={'Build'} subtitle={"KurMon's hope"} />
+					<SettingsItem icon={InfoIcon} title={'Build'} subtitle={"built for bro's"} />
 				</SettingsSection>
 			</PlayerAwareScrollView>
 

@@ -435,7 +435,7 @@ index 0000000..93bb6da
 --- /dev/null
 +++ b/node_modules/react-native-track-player/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/inputs/source-to-output.tab.values.s
 @@ -0,0 +1 @@
-+áÈ
++ï¿½ï¿½
 \ No newline at end of file
 diff --git a/node_modules/react-native-track-player/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/inputs/source-to-output.tab_i b/node_modules/react-native-track-player/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/inputs/source-to-output.tab_i
 new file mode 100644
@@ -587,7 +587,7 @@ index 0000000..d27fd6f
 --- /dev/null
 +++ b/node_modules/react-native-track-player/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/internal-name-to-source.tab.values.s
 @@ -0,0 +1 @@
-+ôù
++ï¿½ï¿½
 \ No newline at end of file
 diff --git a/node_modules/react-native-track-player/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/internal-name-to-source.tab_i b/node_modules/react-native-track-player/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/internal-name-to-source.tab_i
 new file mode 100644
@@ -844,7 +844,7 @@ index 0000000..732f72d
 --- /dev/null
 +++ b/node_modules/react-native-track-player/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/lookups/lookups.tab.values.s
 @@ -0,0 +1 @@
-+ùyÒ‘
++ï¿½yÒ‘
 \ No newline at end of file
 diff --git a/node_modules/react-native-track-player/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/lookups/lookups.tab_i b/node_modules/react-native-track-player/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/lookups/lookups.tab_i
 new file mode 100644
@@ -1753,15 +1753,117 @@ index afa6b0f..dc48eba 100644
  import com.doublesymmetry.trackplayer.utils.BundleUtils
  import com.doublesymmetry.trackplayer.utils.BundleUtils.setRating
  import com.facebook.react.HeadlessJsTaskService
-+import com.facebook.react.ReactApplication
++import android.support.v4.media.MediaBrowserCompat
++import android.support.v4.media.MediaDescriptionCompat
+ +import com.facebook.react.ReactApplication
  import com.facebook.react.bridge.Arguments
  import com.facebook.react.jstasks.HeadlessJsTaskConfig
  import com.facebook.react.modules.core.DeviceEventManagerModule
-@@ -739,9 +740,25 @@ class MusicService : HeadlessJsTaskService() {
+ +import android.content.Intent
+ +import android.content.IntentFilter
+ +import android.bluetooth.BluetoothDevice
+
+ @@ -45,6 +49,36 @@ class MusicService : HeadlessJsTaskService() {
+ +    private val receiver = object : android.content.BroadcastReceiver() {
+ +        override fun onReceive(context: android.content.Context, intent: android.content.Intent) {
+ +            when (intent.action) {
+ +                BluetoothDevice.ACTION_ACL_CONNECTED -> {
+ +                    val bundle = Bundle()
+ +                    bundle.putString("device", "bluetooth")
+ +                    emit("remote-active", bundle)
+ +                }
+ +                Intent.ACTION_HEADSET_PLUG -> {
+ +                    val state = intent.getIntExtra("state", -1)
+ +                    if (state == 1) {
+ +                        val bundle = Bundle()
+ +                        bundle.putString("device", "headset")
+ +                        emit("remote-active", bundle)
+ +                    }
+ +                }
+ +            }
+ +        }
+ +    }
+ +
+ +    override fun onCreate() {
+ +        super.onCreate()
+ +        val filter = IntentFilter()
+ +        filter.addAction(BluetoothDevice.ACTION_ACL_CONNECTED)
+ +        filter.addAction(Intent.ACTION_HEADSET_PLUG)
+ +        registerReceiver(receiver, filter)
+ +    }
+ +
+ +    override fun onDestroy() {
+ +        super.onDestroy()
+ +        unregisterReceiver(receiver)
+ +    }
+ +
+     var playWhenReady: Boolean = false
          return bundle
      }
  
-+    private fun resolveReactContext(): com.facebook.react.bridge.ReactContext? {
++    override fun onGetRoot(clientPackageName: String, clientUid: Int, rootHints: Bundle?): BrowserRoot? {
++        return BrowserRoot("root", null)
++    }
++
++    override fun onLoadChildren(parentId: String, result: Result<MutableList<MediaBrowserCompat.MediaItem>>) {
++        val items = mutableListOf<MediaBrowserCompat.MediaItem>()
++
++        when (parentId) {
++            "root" -> {
++                items.add(createBrowsableItem("queue", "Playing Next", "View your current queue"))
++                items.add(createBrowsableItem("library", "Library", "Playlists and Favorites"))
++                items.add(createBrowsableItem("feed", "Suggestions", "Music for your drive"))
++                result.sendResult(items)
++            }
++            "queue" -> {
++                if (tracks.isEmpty()) {
++                    // If empty, show a hint
++                    items.add(createPlayableItem("empty", "No songs in queue", "Add music from the phone or Suggestions"))
++                } else {
++                    tracks.forEach { track ->
++                        items.add(createPlayableItem(track.id, track.title ?: "Unknown", track.artist ?: ""))
++                    }
++                }
++                result.sendResult(items)
++            }
++            "feed" -> {
++                // This folder will show items once we have a way to pipe suggestions
++                items.add(createPlayableItem("feed_info", "Use Phone to browse full feed", "Select a playlist to see it here"))
++                result.sendResult(items)
++            }
++            else -> {
++                result.sendResult(items)
+}
++        }
++    }
++
++    override fun onPlayFromMediaId(mediaId: String?, extras: Bundle?) {
++        if (mediaId == null) return
++        
++        val bundle = Bundle()
++        bundle.putString("mediaId", mediaId)
++        emit("remote-play-id", bundle)
++    }
++
++    private fun createBrowsableItem(id: String, title: String, subtitle: String): MediaBrowserCompat.MediaItem {
++        val description = MediaDescriptionCompat.Builder()
++            .setMediaId(id)
++            .setTitle(title)
++            .setSubtitle(subtitle)
++            .build()
++        return MediaBrowserCompat.MediaItem(description, MediaBrowserCompat.MediaItem.FLAG_BROWSABLE)
++    }
++
++    private fun createPlayableItem(id: String, title: String, artist: String): MediaBrowserCompat.MediaItem {
++        val description = MediaDescriptionCompat.Builder()
++            .setMediaId(id)
++            .setTitle(title)
++            .setSubtitle(artist)
++            .build()
++        return MediaBrowserCompat.MediaItem(description, MediaBrowserCompat.MediaItem.FLAG_PLAYABLE)
++    }
++
+     private fun resolveReactContext(): com.facebook.react.bridge.ReactContext? {
 +        // Try HeadlessJsTaskService context first
 +        val serviceContext = reactNativeHost.reactInstanceManager.currentReactContext
 +        if (serviceContext != null) return serviceContext
