@@ -397,7 +397,7 @@ index b2409a0..4bd9e79 100644
 +        val bundle = Bundle()
 +        bundle.putString("parentId", parentId)
 +        bundle.putSerializable("items", (Arguments.toList(items) as java.io.Serializable))
-+        
++
 +        val intent = android.content.Intent("com.doublesymmetry.trackplayer.BROWSE_RESULTS")
 +        intent.putExtras(bundle)
 +        reactApplicationContext.sendBroadcast(intent)
@@ -451,22 +451,22 @@ index b2409a0..4bd9e79 100644
 -}
 +} }
 diff --git a/node_modules/react-native-track-player/android/src/main/java/com/doublesymmetry/trackplayer/service/MusicService.kt b/node_modules/react-native-track-player/android/src/main/java/com/doublesymmetry/trackplayer/service/MusicService.kt
-index afa6b0f..6c5c989 100644
+index afa6b0f..5336690 100644
 --- a/node_modules/react-native-track-player/android/src/main/java/com/doublesymmetry/trackplayer/service/MusicService.kt
 +++ b/node_modules/react-native-track-player/android/src/main/java/com/doublesymmetry/trackplayer/service/MusicService.kt
-@@ -9,7 +9,11 @@ import android.os.Binder
- import android.os.Build
+@@ -10,6 +10,11 @@ import android.os.Build
  import android.os.Bundle
  import android.os.IBinder
+ import android.support.v4.media.RatingCompat
 +import android.support.v4.media.MediaBrowserCompat
 +import android.support.v4.media.MediaDescriptionCompat
- import android.support.v4.media.RatingCompat
 +import android.bluetooth.BluetoothDevice
 +import android.content.IntentFilter
++import android.support.v4.media.session.MediaSessionCompat
  import androidx.annotation.MainThread
  import androidx.core.app.NotificationCompat
  import androidx.core.app.NotificationCompat.PRIORITY_LOW
-@@ -30,6 +34,7 @@ import com.doublesymmetry.trackplayer.module.MusicEvents.Companion.METADATA_PAYL
+@@ -30,6 +35,7 @@ import com.doublesymmetry.trackplayer.module.MusicEvents.Companion.METADATA_PAYL
  import com.doublesymmetry.trackplayer.utils.BundleUtils
  import com.doublesymmetry.trackplayer.utils.BundleUtils.setRating
  import com.facebook.react.HeadlessJsTaskService
@@ -474,15 +474,14 @@ index afa6b0f..6c5c989 100644
  import com.facebook.react.bridge.Arguments
  import com.facebook.react.jstasks.HeadlessJsTaskConfig
  import com.facebook.react.modules.core.DeviceEventManagerModule
-@@ -38,15 +43,67 @@ import kotlinx.coroutines.*
+@@ -38,15 +44,61 @@ import kotlinx.coroutines.*
  import kotlinx.coroutines.flow.flow
  import java.util.concurrent.TimeUnit
  import kotlin.system.exitProcess
 -import timber.log.Timber
-+import android.support.v4.media.session.MediaSessionCompat
 +import android.support.v4.media.session.PlaybackStateCompat
 +import androidx.media.MediaBrowserServiceCompat
-+import androidx.annotation.MainThread
++import timber.log.Timber
  
  @MainThread
 -class MusicService : HeadlessJsTaskService() {
@@ -492,15 +491,14 @@ index afa6b0f..6c5c989 100644
      private val scope = MainScope()
      private var progressUpdateJob: Job? = null
  
++    private val reactNativeHost
++        get() = (application as ReactApplication).reactNativeHost
++
 +    // Helper to run HeadlessJS tasks since we are no longer inheriting from HeadlessJsTaskService
 +    private fun startTask(taskConfig: com.facebook.react.jstasks.HeadlessJsTaskConfig) {
 +        val reactContext = resolveReactContext() ?: return
 +        val headlessJsTaskContext = com.facebook.react.jstasks.HeadlessJsTaskContext.getInstance(reactContext)
 +        headlessJsTaskContext.startTask(taskConfig)
-+    }
-+
-+    private fun getTaskConfig(intent: android.content.Intent?): com.facebook.react.jstasks.HeadlessJsTaskConfig {
-+        return com.facebook.react.jstasks.HeadlessJsTaskConfig("TrackPlayerTask", Arguments.createMap(), 0, true)
 +    }
 +
 +    private val receiver = object : android.content.BroadcastReceiver() {
@@ -544,7 +542,22 @@ index afa6b0f..6c5c989 100644
      /**
       * Use [appKilledPlaybackBehavior] instead.
       */
-@@ -441,6 +498,66 @@ class MusicService : HeadlessJsTaskService() {
+@@ -149,11 +201,6 @@ class MusicService : HeadlessJsTaskService() {
+     private var compactCapabilities: List<Capability> = emptyList()
+ 
+     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+-        return super.onStartCommand(intent, flags, startId)
+-    }
+-
+-    override fun getTaskConfig(intent: Intent?): HeadlessJsTaskConfig {
+-        return HeadlessJsTaskConfig(TASK_KEY, Arguments.createMap(), 0, true)
++        startTask(HeadlessJsTaskConfig(TASK_KEY, Arguments.createMap(), 0, true))
++        startAndStopEmptyNotificationToAvoidANR()
++        return START_STICKY
+     }
+ 
+     /**
+@@ -441,6 +488,66 @@ class MusicService : HeadlessJsTaskService() {
          player.notificationManager.hideNotification()
      }
  
@@ -567,7 +580,7 @@ index afa6b0f..6c5c989 100644
 +                    items.add(createPlayableItem("empty", "No songs in queue", "Add music from the phone or Suggestions"))
 +                } else {
 +                    tracks.forEach { track ->
-+                        items.add(createPlayableItem(track.id, track.title ?: "Unknown", track.artist ?: ""))
++                        items.add(createPlayableItem(track.url, track.title ?: "Unknown", track.artist ?: ""))
 +                    }
 +                }
 +                result.sendResult(items)
@@ -584,7 +597,7 @@ index afa6b0f..6c5c989 100644
 +
 +    override fun onPlayFromMediaId(mediaId: String?, extras: Bundle?) {
 +        if (mediaId == null) return
-+        
++
 +        val bundle = Bundle()
 +        bundle.putString("mediaId", mediaId)
 +        emit("remote-play-id", bundle)
@@ -611,23 +624,19 @@ index afa6b0f..6c5c989 100644
      private fun emitPlaybackTrackChangedEvents(
          index: Int?,
          previousIndex: Int?,
-@@ -739,9 +856,25 @@ class MusicService : HeadlessJsTaskService() {
+@@ -739,9 +846,25 @@ class MusicService : HeadlessJsTaskService() {
          return bundle
      }
  
 +    private fun resolveReactContext(): com.facebook.react.bridge.ReactContext? {
-+        // Try HeadlessJsTaskService context first
-+        val serviceContext = reactNativeHost.reactInstanceManager.currentReactContext
-+        if (serviceContext != null) return serviceContext
-+
-+        // Fallback 1: get from application's ReactNativeHost
++        // Try application's ReactNativeHost first
 +        val app = application
 +        if (app is ReactApplication) {
 +            val appContext = app.reactNativeHost.reactInstanceManager.currentReactContext
 +            if (appContext != null) return appContext
 +        }
 +
-+        // Fallback 2: get from MusicModule's stored context (New Architecture support)
++        // Fallback: get from MusicModule's stored context (New Architecture support)
 +        return com.doublesymmetry.trackplayer.module.MusicModule.getReactContext()
 +    }
 +
@@ -638,7 +647,7 @@ index afa6b0f..6c5c989 100644
              ?.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
              ?.emit(event, data?.let { Arguments.fromBundle(it) })
      }
-@@ -751,7 +884,7 @@ class MusicService : HeadlessJsTaskService() {
+@@ -751,21 +874,15 @@ class MusicService : HeadlessJsTaskService() {
          val payload = Arguments.createArray()
          data.forEach { payload.pushMap(Arguments.fromBundle(it)) }
  
@@ -647,3 +656,31 @@ index afa6b0f..6c5c989 100644
              ?.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
              ?.emit(event, payload)
      }
+ 
+     @MainThread
+-    override fun onBind(intent: Intent): IBinder {
++    override fun onBind(intent: Intent): IBinder? {
++        if (intent.action == MediaBrowserServiceCompat.SERVICE_INTERFACE) {
++            return super.onBind(intent)
++        }
+         return binder
+     }
+ 
+-    @MainThread
+-    override fun onHeadlessJsTaskFinish(taskId: Int) {
+-        // This is empty so ReactNative doesn't kill this service
+-    }
+-
+-    @MainThread
+-    override fun onDestroy() {
+-        super.onDestroy()
+-        if (::player.isInitialized) {
+-            player.destroy()
+-        }
+-
+-        progressUpdateJob?.cancel()
+-    }
+-
+     @MainThread
+     inner class MusicBinder : Binder() {
+         val service = this@MusicService

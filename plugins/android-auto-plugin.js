@@ -34,8 +34,13 @@ const withAndroidAuto = (config) => {
 			mainApplication['service'] = [];
 		}
 
+		// Ensure service is an array (sometimes it's a single object if only one service exists)
+		if (!Array.isArray(mainApplication['service'])) {
+			mainApplication['service'] = [mainApplication['service']];
+		}
+
 		let musicService = mainApplication['service'].find(
-			(s) => s.$['android:name'] === 'com.doublesymmetry.trackplayer.service.MusicService'
+			(s) => s.$ && s.$['android:name'] === 'com.doublesymmetry.trackplayer.service.MusicService'
 		);
 
 		if (!musicService) {
