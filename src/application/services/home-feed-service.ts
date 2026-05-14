@@ -19,8 +19,8 @@ const logger = getLogger('HomeFeedService');
 
 const { TrackPlayerModule } = NativeModules;
 
-export class HomeFeedService {
 const MIN_SECTIONS = 5;
+const STALENESS_THRESHOLD_MS = 60 * 60 * 1000; // 1 hour
 
 interface ProviderState {
 	readonly operations: HomeFeedOperations;

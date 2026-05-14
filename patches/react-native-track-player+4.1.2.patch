@@ -1,5 +1,5 @@
 diff --git a/node_modules/react-native-track-player/android/src/main/java/com/doublesymmetry/trackplayer/module/MusicModule.kt b/node_modules/react-native-track-player/android/src/main/java/com/doublesymmetry/trackplayer/module/MusicModule.kt
-index b2409a0..4bd9e79 100644
+index b2409a0..a14e469 100644
 --- a/node_modules/react-native-track-player/android/src/main/java/com/doublesymmetry/trackplayer/module/MusicModule.kt
 +++ b/node_modules/react-native-track-player/android/src/main/java/com/doublesymmetry/trackplayer/module/MusicModule.kt
 @@ -38,6 +38,19 @@ class MusicModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
@@ -31,7 +31,15 @@ index b2409a0..4bd9e79 100644
      }
  
      override fun onServiceConnected(name: ComponentName, service: IBinder) {
-@@ -251,7 +266,7 @@ class MusicModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
+@@ -134,6 +149,7 @@ class MusicModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
+             this["CAPABILITY_SET_RATING"] = Capability.SET_RATING.ordinal
+             this["CAPABILITY_JUMP_FORWARD"] = Capability.JUMP_FORWARD.ordinal
+             this["CAPABILITY_JUMP_BACKWARD"] = Capability.JUMP_BACKWARD.ordinal
++            this["CAPABILITY_BROWSE"] = 100
+ 
+             // States
+             this["STATE_NONE"] = State.None.state
+@@ -251,7 +267,7 @@ class MusicModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
      }
  
      @ReactMethod
@@ -40,7 +48,7 @@ index b2409a0..4bd9e79 100644
          if (verifyServiceBoundOrReject(callback)) return@launch
  
          val options = Arguments.toBundle(data)
-@@ -261,10 +276,10 @@ class MusicModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
+@@ -261,10 +277,10 @@ class MusicModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
          }
  
          callback.resolve(null)
@@ -53,7 +61,7 @@ index b2409a0..4bd9e79 100644
          if (verifyServiceBoundOrReject(callback)) return@launch
  
          try {
-@@ -282,10 +297,10 @@ class MusicModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
+@@ -282,10 +298,10 @@ class MusicModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
          } catch (exception: Exception) {
              rejectWithException(callback, exception)
          }
@@ -66,7 +74,7 @@ index b2409a0..4bd9e79 100644
          if (verifyServiceBoundOrReject(callback)) return@launch
          if (data == null) {
              callback.resolve(null)
-@@ -298,17 +313,17 @@ class MusicModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
+@@ -298,17 +314,17 @@ class MusicModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
          } else {
              callback.reject("invalid_track_object", "Track was not a dictionary type")
          }
@@ -88,7 +96,7 @@ index b2409a0..4bd9e79 100644
          if (verifyServiceBoundOrReject(callback)) return@launch
          val inputIndexes = Arguments.toList(data)
          if (inputIndexes != null) {
-@@ -328,11 +343,10 @@ class MusicModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
+@@ -328,10 +344,10 @@ class MusicModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
              musicService.remove(indexes)
          }
          callback.resolve(null)
@@ -97,12 +105,11 @@ index b2409a0..4bd9e79 100644
  
      @ReactMethod
 -    fun updateMetadataForTrack(index: Int, map: ReadableMap?, callback: Promise) =
--        scope.launch {
-+    fun updateMetadataForTrack(index: Int, map: ReadableMap?, callback: Promise) { scope.launch {
++    fun updateMetadataForTrack(index: Int, map: ReadableMap?, callback: Promise) {
+         scope.launch {
              if (verifyServiceBoundOrReject(callback)) return@launch
  
-             if (index < 0 || index >= musicService.tracks.size) {
-@@ -345,10 +359,10 @@ class MusicModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
+@@ -345,10 +361,10 @@ class MusicModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
  
                  callback.resolve(null)
              }
@@ -115,7 +122,7 @@ index b2409a0..4bd9e79 100644
          if (verifyServiceBoundOrReject(callback)) return@launch
  
          if (musicService.tracks.isEmpty())
-@@ -361,10 +375,10 @@ class MusicModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
+@@ -361,10 +377,10 @@ class MusicModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
          }
  
          callback.resolve(null)
@@ -128,7 +135,7 @@ index b2409a0..4bd9e79 100644
          if (verifyServiceBoundOrReject(callback)) return@launch
  
          if (musicService.tracks.isEmpty())
-@@ -372,18 +386,18 @@ class MusicModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
+@@ -372,18 +388,18 @@ class MusicModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
  
          musicService.clearNotificationMetadata()
          callback.resolve(null)
@@ -151,7 +158,7 @@ index b2409a0..4bd9e79 100644
          if (verifyServiceBoundOrReject(callback)) return@launch
  
          musicService.skip(index)
-@@ -393,10 +407,10 @@ class MusicModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
+@@ -393,10 +409,10 @@ class MusicModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
          }
  
          callback.resolve(null)
@@ -164,7 +171,7 @@ index b2409a0..4bd9e79 100644
          if (verifyServiceBoundOrReject(callback)) return@launch
  
          musicService.skipToNext()
-@@ -406,10 +420,10 @@ class MusicModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
+@@ -406,10 +422,10 @@ class MusicModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
          }
  
          callback.resolve(null)
@@ -177,7 +184,7 @@ index b2409a0..4bd9e79 100644
          if (verifyServiceBoundOrReject(callback)) return@launch
  
          musicService.skipToPrevious()
-@@ -419,10 +433,10 @@ class MusicModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
+@@ -419,10 +435,10 @@ class MusicModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
          }
  
          callback.resolve(null)
@@ -190,7 +197,7 @@ index b2409a0..4bd9e79 100644
          if (verifyServiceBoundOrReject(callback)) return@launch
  
          musicService.stop()
-@@ -430,136 +444,136 @@ class MusicModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
+@@ -430,136 +446,136 @@ class MusicModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
          musicService.clear()
  
          callback.resolve(null)
@@ -362,7 +369,7 @@ index b2409a0..4bd9e79 100644
          if (verifyServiceBoundOrReject(callback)) return@launch
  
          try {
-@@ -569,61 +583,72 @@ class MusicModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
+@@ -569,61 +585,71 @@ class MusicModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
          } catch (exception: Exception) {
              rejectWithException(callback, exception)
          }
@@ -397,7 +404,6 @@ index b2409a0..4bd9e79 100644
 +        val bundle = Bundle()
 +        bundle.putString("parentId", parentId)
 +        bundle.putSerializable("items", (Arguments.toList(items) as java.io.Serializable))
-+
 +        val intent = android.content.Intent("com.doublesymmetry.trackplayer.BROWSE_RESULTS")
 +        intent.putExtras(bundle)
 +        reactApplicationContext.sendBroadcast(intent)
@@ -447,11 +453,11 @@ index b2409a0..4bd9e79 100644
 +    fun getPlaybackState(callback: Promise) { scope.launch {
          if (verifyServiceBoundOrReject(callback)) return@launch
          callback.resolve(Arguments.fromBundle(musicService.getPlayerStateBundle(musicService.state)))
-     }
--}
-+} }
+-    }
++    } }
+ }
 diff --git a/node_modules/react-native-track-player/android/src/main/java/com/doublesymmetry/trackplayer/service/MusicService.kt b/node_modules/react-native-track-player/android/src/main/java/com/doublesymmetry/trackplayer/service/MusicService.kt
-index afa6b0f..5336690 100644
+index afa6b0f..971b451 100644
 --- a/node_modules/react-native-track-player/android/src/main/java/com/doublesymmetry/trackplayer/service/MusicService.kt
 +++ b/node_modules/react-native-track-player/android/src/main/java/com/doublesymmetry/trackplayer/service/MusicService.kt
 @@ -10,6 +10,11 @@ import android.os.Build
@@ -474,14 +480,13 @@ index afa6b0f..5336690 100644
  import com.facebook.react.bridge.Arguments
  import com.facebook.react.jstasks.HeadlessJsTaskConfig
  import com.facebook.react.modules.core.DeviceEventManagerModule
-@@ -38,15 +44,61 @@ import kotlinx.coroutines.*
+@@ -38,15 +44,65 @@ import kotlinx.coroutines.*
  import kotlinx.coroutines.flow.flow
  import java.util.concurrent.TimeUnit
  import kotlin.system.exitProcess
--import timber.log.Timber
 +import android.support.v4.media.session.PlaybackStateCompat
 +import androidx.media.MediaBrowserServiceCompat
-+import timber.log.Timber
+ import timber.log.Timber
  
  @MainThread
 -class MusicService : HeadlessJsTaskService() {
@@ -542,22 +547,16 @@ index afa6b0f..5336690 100644
      /**
       * Use [appKilledPlaybackBehavior] instead.
       */
-@@ -149,11 +201,6 @@ class MusicService : HeadlessJsTaskService() {
+@@ -94,7 +150,7 @@ class MusicService : HeadlessJsTaskService() {
      private var compactCapabilities: List<Capability> = emptyList()
  
      override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
--        return super.onStartCommand(intent, flags, startId)
--    }
--
--    override fun getTaskConfig(intent: Intent?): HeadlessJsTaskConfig {
--        return HeadlessJsTaskConfig(TASK_KEY, Arguments.createMap(), 0, true)
+-        startTask(getTaskConfig(intent))
 +        startTask(HeadlessJsTaskConfig(TASK_KEY, Arguments.createMap(), 0, true))
-+        startAndStopEmptyNotificationToAvoidANR()
-+        return START_STICKY
+         startAndStopEmptyNotificationToAvoidANR()
+         return START_STICKY
      }
- 
-     /**
-@@ -441,6 +488,66 @@ class MusicService : HeadlessJsTaskService() {
+@@ -441,6 +497,66 @@ class MusicService : HeadlessJsTaskService() {
          player.notificationManager.hideNotification()
      }
  
@@ -624,7 +623,7 @@ index afa6b0f..5336690 100644
      private fun emitPlaybackTrackChangedEvents(
          index: Int?,
          previousIndex: Int?,
-@@ -739,9 +846,25 @@ class MusicService : HeadlessJsTaskService() {
+@@ -739,9 +855,21 @@ class MusicService : HeadlessJsTaskService() {
          return bundle
      }
  
@@ -647,7 +646,7 @@ index afa6b0f..5336690 100644
              ?.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
              ?.emit(event, data?.let { Arguments.fromBundle(it) })
      }
-@@ -751,21 +874,15 @@ class MusicService : HeadlessJsTaskService() {
+@@ -751,59 +879,17 @@ class MusicService : HeadlessJsTaskService() {
          val payload = Arguments.createArray()
          data.forEach { payload.pushMap(Arguments.fromBundle(it)) }
  
@@ -657,30 +656,80 @@ index afa6b0f..5336690 100644
              ?.emit(event, payload)
      }
  
-     @MainThread
+-    override fun getTaskConfig(intent: Intent?): HeadlessJsTaskConfig {
+-        return HeadlessJsTaskConfig(TASK_KEY, Arguments.createMap(), 0, true)
+-    }
+-
+-    @MainThread
 -    override fun onBind(intent: Intent): IBinder {
-+    override fun onBind(intent: Intent): IBinder? {
-+        if (intent.action == MediaBrowserServiceCompat.SERVICE_INTERFACE) {
-+            return super.onBind(intent)
-+        }
-         return binder
-     }
- 
+-        return binder
+-    }
+-
+-    @MainThread
+-    override fun onTaskRemoved(rootIntent: Intent?) {
+-        super.onTaskRemoved(rootIntent)
+-
+-        if (!::player.isInitialized) return
+-
+-        when (appKilledPlaybackBehavior) {
+-            AppKilledPlaybackBehavior.PAUSE_PLAYBACK -> player.pause()
+-            AppKilledPlaybackBehavior.STOP_PLAYBACK_AND_REMOVE_NOTIFICATION -> {
+-                player.clear()
+-                player.stop()
+-
+-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+-                    stopForeground(STOP_FOREGROUND_REMOVE)
+-                } else {
+-                    @Suppress("DEPRECATION")
+-                    stopForeground(true)
+-                }
+-
+-                stopSelf()
+-                exitProcess(0)
+-            }
+-            else -> {}
+-        }
+-    }
+-
 -    @MainThread
 -    override fun onHeadlessJsTaskFinish(taskId: Int) {
 -        // This is empty so ReactNative doesn't kill this service
 -    }
 -
--    @MainThread
+     @MainThread
 -    override fun onDestroy() {
 -        super.onDestroy()
 -        if (::player.isInitialized) {
 -            player.destroy()
--        }
++    override fun onBind(intent: Intent): IBinder? {
++        if (intent.action == MediaBrowserServiceCompat.SERVICE_INTERFACE) {
++            return super.onBind(intent)
+         }
 -
 -        progressUpdateJob?.cancel()
--    }
--
++        return binder
+     }
+ 
      @MainThread
-     inner class MusicBinder : Binder() {
-         val service = this@MusicService
+diff --git a/node_modules/react-native-track-player/lib/src/constants/Capability.d.ts b/node_modules/react-native-track-player/lib/src/constants/Capability.d.ts
+index dc91e09..2a54eea 100644
+--- a/node_modules/react-native-track-player/lib/src/constants/Capability.d.ts
++++ b/node_modules/react-native-track-player/lib/src/constants/Capability.d.ts
+@@ -13,5 +13,6 @@ export declare enum Capability {
+     SetRating,
+     Like,
+     Dislike,
+-    Bookmark
++    Bookmark,
++    Browse
+ }
+diff --git a/node_modules/react-native-track-player/lib/src/constants/Capability.js b/node_modules/react-native-track-player/lib/src/constants/Capability.js
+index cf92d7b..c952bf0 100644
+--- a/node_modules/react-native-track-player/lib/src/constants/Capability.js
++++ b/node_modules/react-native-track-player/lib/src/constants/Capability.js
+@@ -16,4 +16,5 @@ export var Capability;
+     Capability[Capability["Like"] = TrackPlayer.CAPABILITY_LIKE] = "Like";
+     Capability[Capability["Dislike"] = TrackPlayer.CAPABILITY_DISLIKE] = "Dislike";
+     Capability[Capability["Bookmark"] = TrackPlayer.CAPABILITY_BOOKMARK] = "Bookmark";
++    Capability[Capability["Browse"] = TrackPlayer.CAPABILITY_BROWSE] = "Browse";
+ })(Capability || (Capability = {}));
