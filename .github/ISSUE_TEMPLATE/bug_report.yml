@@ -55,7 +55,7 @@ body:
       attributes:
           label: App Version
           description: What version of the app are you running?
-          placeholder: '4.1'
+          placeholder: '4.0'
       validations:
           required: true
 

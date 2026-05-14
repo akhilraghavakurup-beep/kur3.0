@@ -87,7 +87,6 @@ async function _doSetup(): Promise<boolean> {
 				Capability.SeekTo,
 				Capability.JumpForward,
 				Capability.JumpBackward,
-				Capability.Browse,
 			],
 			notificationCapabilities: [
 				Capability.Play,
