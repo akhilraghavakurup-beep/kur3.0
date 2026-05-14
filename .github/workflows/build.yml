@@ -48,6 +48,7 @@ jobs:
 
             - name: Tune Gradle memory
               run: |
+                  echo "" >> android/gradle.properties
                   echo "org.gradle.jvmargs=-Xmx6g -XX:MaxMetaspaceSize=1g -Dkotlin.daemon.jvm.options=-Xmx2g" >> android/gradle.properties
                   echo "org.gradle.workers.max=2" >> android/gradle.properties
                   echo "org.gradle.parallel=false" >> android/gradle.properties
