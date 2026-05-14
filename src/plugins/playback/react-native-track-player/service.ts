@@ -8,8 +8,6 @@
 import TrackPlayer, { Event, State } from 'react-native-track-player';
 import { getLogger } from '@shared/services/logger';
 import { useSettingsStore } from '@/src/application/state/settings-store';
-import { useHomeFeedStore } from '@/src/application/state/home-feed-store';
-import type { FeedSection } from '@/src/domain/entities/feed-section';
 
 const logger = getLogger('RNTPPlaybackService');
 const MIN_SEEK_POSITION = 0;
@@ -72,8 +70,8 @@ export async function PlaybackService(): Promise<void> {
 				]);
 			} else if (event.parentId === 'feed') {
 				const { sections } = useHomeFeedStore.getState();
-				const items = (sections as FeedSection[]).flatMap((s: FeedSection) => 
-					s.items.filter((item: any) => item.type === 'track' || item.type === 'album').map((item: any) => ({
+				const items = sections.flatMap(s => 
+					s.items.filter(item => item.type === 'track' || item.type === 'album').map(item => ({
 						id: item.type === 'track' ? item.data.id.value : item.data.id.value,
 						title: item.data.title,
 						subtitle: item.type === 'track' ? item.data.artist : 'Album',
