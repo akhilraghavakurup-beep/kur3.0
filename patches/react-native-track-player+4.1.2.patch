@@ -1495,7 +1495,7 @@ index b2409a0..3974212 100644
          if (verifyServiceBoundOrReject(callback)) return@launch
  
          musicService.stop()
-@@ -430,136 +444,136 @@ class MusicModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
+@@ -430,136 +444,147 @@ class MusicModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
          musicService.clear()
  
          callback.resolve(null)
@@ -1667,7 +1667,7 @@ index b2409a0..3974212 100644
          if (verifyServiceBoundOrReject(callback)) return@launch
  
          try {
-@@ -569,61 +583,61 @@ class MusicModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
+@@ -569,61 +594,72 @@ class MusicModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
          } catch (exception: Exception) {
              rejectWithException(callback, exception)
          }
@@ -1697,6 +1697,17 @@ index b2409a0..3974212 100644
          )
 -    }
 +    } }
++
++    @ReactMethod
++    fun setBrowseResults(parentId: String, items: ReadableArray) {
++        val bundle = Bundle()
++        bundle.putString("parentId", parentId)
++        bundle.putSerializable("items", (Arguments.toList(items) as java.io.Serializable))
++        
++        val intent = android.content.Intent("com.doublesymmetry.trackplayer.BROWSE_RESULTS")
++        intent.putExtras(bundle)
++        reactApplicationContext.sendBroadcast(intent)
++    }
  
      @ReactMethod
 -    fun getDuration(callback: Promise) = scope.launch {
@@ -1749,55 +1760,62 @@ diff --git a/node_modules/react-native-track-player/android/src/main/java/com/do
 index afa6b0f..dc48eba 100644
 --- a/node_modules/react-native-track-player/android/src/main/java/com/doublesymmetry/trackplayer/service/MusicService.kt
 +++ b/node_modules/react-native-track-player/android/src/main/java/com/doublesymmetry/trackplayer/service/MusicService.kt
-@@ -30,6 +30,7 @@ import com.doublesymmetry.trackplayer.module.MusicEvents.Companion.METADATA_PAYL
+@@ -30,6 +30,12 @@ import com.doublesymmetry.trackplayer.module.MusicEvents.Companion.METADATA_PAYL
  import com.doublesymmetry.trackplayer.utils.BundleUtils
  import com.doublesymmetry.trackplayer.utils.BundleUtils.setRating
  import com.facebook.react.HeadlessJsTaskService
 +import android.support.v4.media.MediaBrowserCompat
 +import android.support.v4.media.MediaDescriptionCompat
- +import com.facebook.react.ReactApplication
++import com.facebook.react.ReactApplication
  import com.facebook.react.bridge.Arguments
  import com.facebook.react.jstasks.HeadlessJsTaskConfig
  import com.facebook.react.modules.core.DeviceEventManagerModule
- +import android.content.Intent
- +import android.content.IntentFilter
- +import android.bluetooth.BluetoothDevice
-
- @@ -45,6 +49,36 @@ class MusicService : HeadlessJsTaskService() {
- +    private val receiver = object : android.content.BroadcastReceiver() {
- +        override fun onReceive(context: android.content.Context, intent: android.content.Intent) {
- +            when (intent.action) {
- +                BluetoothDevice.ACTION_ACL_CONNECTED -> {
- +                    val bundle = Bundle()
- +                    bundle.putString("device", "bluetooth")
- +                    emit("remote-active", bundle)
- +                }
- +                Intent.ACTION_HEADSET_PLUG -> {
- +                    val state = intent.getIntExtra("state", -1)
- +                    if (state == 1) {
- +                        val bundle = Bundle()
- +                        bundle.putString("device", "headset")
- +                        emit("remote-active", bundle)
- +                    }
- +                }
- +            }
- +        }
- +    }
- +
- +    override fun onCreate() {
- +        super.onCreate()
- +        val filter = IntentFilter()
- +        filter.addAction(BluetoothDevice.ACTION_ACL_CONNECTED)
- +        filter.addAction(Intent.ACTION_HEADSET_PLUG)
- +        registerReceiver(receiver, filter)
- +    }
- +
- +    override fun onDestroy() {
- +        super.onDestroy()
- +        unregisterReceiver(receiver)
- +    }
- +
-     var playWhenReady: Boolean = false
++import android.content.IntentFilter
++import android.bluetooth.BluetoothDevice
+ import com.google.android.exoplayer2.ui.R as ExoPlayerR
+ import kotlinx.coroutines.*
+ import kotlinx.coroutines.flow.flow
+@@ -45,6 +51,36 @@ class MusicService : HeadlessJsTaskService() {
+     private val scope = MainScope()
+     private var progressUpdateJob: Job? = null
+ 
++    private val receiver = object : android.content.BroadcastReceiver() {
++        override fun onReceive(context: android.content.Context, intent: android.content.Intent) {
++            when (intent.action) {
++                BluetoothDevice.ACTION_ACL_CONNECTED -> {
++                    val bundle = Bundle()
++                    bundle.putString("device", "bluetooth")
++                    emit("remote-active", bundle)
++                }
++                android.content.Intent.ACTION_HEADSET_PLUG -> {
++                    val state = intent.getIntExtra("state", -1)
++                    if (state == 1) {
++                        val bundle = Bundle()
++                        bundle.putString("device", "headset")
++                        emit("remote-active", bundle)
++                    }
++                }
++            }
++        }
++    }
++
++    override fun onCreate() {
++        super.onCreate()
++        val filter = IntentFilter()
++        filter.addAction(BluetoothDevice.ACTION_ACL_CONNECTED)
++        filter.addAction(android.content.Intent.ACTION_HEADSET_PLUG)
++        registerReceiver(receiver, filter)
++    }
++
++    override fun onDestroy() {
++        super.onDestroy()
++        unregisterReceiver(receiver)
++    }
++
+     /**
+      * Use [appKilledPlaybackBehavior] instead.
+      */
+@@ -428,6 +464,74 @@ class MusicService : HeadlessJsTaskService() {
          return bundle
      }
  
@@ -1833,7 +1851,7 @@ index afa6b0f..dc48eba 100644
 +            }
 +            else -> {
 +                result.sendResult(items)
-}
++            }
 +        }
 +    }
 +
@@ -1846,7 +1864,7 @@ index afa6b0f..dc48eba 100644
 +    }
 +
 +    private fun createBrowsableItem(id: String, title: String, subtitle: String): MediaBrowserCompat.MediaItem {
-+        val description = MediaDescriptionCompat.Builder()
++        val description = android.support.v4.media.MediaDescriptionCompat.Builder()
 +            .setMediaId(id)
 +            .setTitle(title)
 +            .setSubtitle(subtitle)
@@ -1855,7 +1873,7 @@ index afa6b0f..dc48eba 100644
 +    }
 +
 +    private fun createPlayableItem(id: String, title: String, artist: String): MediaBrowserCompat.MediaItem {
-+        val description = MediaDescriptionCompat.Builder()
++        val description = android.support.v4.media.MediaDescriptionCompat.Builder()
 +            .setMediaId(id)
 +            .setTitle(title)
 +            .setSubtitle(artist)
@@ -1864,6 +1882,7 @@ index afa6b0f..dc48eba 100644
 +    }
 +
      private fun resolveReactContext(): com.facebook.react.bridge.ReactContext? {
+-        return reactNativeHost.reactInstanceManager.currentReactContext
 +        // Try HeadlessJsTaskService context first
 +        val serviceContext = reactNativeHost.reactInstanceManager.currentReactContext
 +        if (serviceContext != null) return serviceContext
@@ -1877,8 +1896,8 @@ index afa6b0f..dc48eba 100644
 +
 +        // Fallback 2: get from MusicModule's stored context (New Architecture support)
 +        return com.doublesymmetry.trackplayer.module.MusicModule.getReactContext()
-+    }
-+
+     }
+ 
      @MainThread
      private fun emit(event: String, data: Bundle? = null) {
 -        reactNativeHost.reactInstanceManager.currentReactContext
@@ -1886,7 +1905,7 @@ index afa6b0f..dc48eba 100644
              ?.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
              ?.emit(event, data?.let { Arguments.fromBundle(it) })
      }
-@@ -751,7 +768,7 @@ class MusicService : HeadlessJsTaskService() {
+@@ -751,7 +855,7 @@ class MusicService : HeadlessJsTaskService() {
          val payload = Arguments.createArray()
          data.forEach { payload.pushMap(Arguments.fromBundle(it)) }
  
