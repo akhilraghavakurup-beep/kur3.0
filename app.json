@@ -2,7 +2,7 @@
     "expo":  {
                  "name": "Kur Music",
                  "slug": "kurmusic",
-                 "version":  "4.1",
+                 "version":  "4.2",
                  "orientation":  "portrait",
                  "icon":  "./assets/images/icon.png",
                  "scheme": "kurmusic",
@@ -10,6 +10,7 @@
                  "newArchEnabled":  true,
                  "android":  {
                                  "package":  "com.aria.music.app",
+                                 "versionCode":  2,
                                  "adaptiveIcon":  {
                                                       "backgroundColor":  "#E6F4FE",
                                                       "foregroundImage":  "./assets/images/android-icon-foreground.png",

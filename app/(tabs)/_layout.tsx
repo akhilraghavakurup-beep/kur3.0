@@ -4,10 +4,15 @@ import { View, Pressable, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { Text, IconButton } from 'react-native-paper';
-import { SettingsIcon } from 'lucide-react-native';
+import { LanguagesIcon, SettingsIcon } from 'lucide-react-native';
 import { useAppTheme, resolveDisplayFont } from '@/lib/theme';
 import { useActiveDownloadsCount } from '@/src/application/state/download-store';
-import { useTabOrder, useEnabledTabs, type TabId, DEFAULT_TAB_ORDER } from '@/src/application/state/settings-store';
+import {
+	useTabOrder,
+	useEnabledTabs,
+	type TabId,
+	DEFAULT_TAB_ORDER,
+} from '@/src/application/state/settings-store';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { TAB_CONFIG, TAB_BAR_HEIGHT } from '@/lib/tab-config';
 import { LottieTabIcon } from '@/src/components/ui/lottie-tab-icon';
@@ -111,6 +116,7 @@ function TabHeader({ initialTabId }: { readonly initialTabId: TabId }) {
 	const { colors } = useAppTheme();
 	const insets = useSafeAreaInsets();
 	const title = TAB_CONFIG[currentTabId]?.title ?? '';
+	const isHomeFeed = currentTabId === 'feed';
 
 	return (
 		<>
@@ -122,10 +128,30 @@ function TabHeader({ initialTabId }: { readonly initialTabId: TabId }) {
 			>
 				<View style={styles.headerActions}>
 					<IconButton
-						icon={() => <Icon as={SettingsIcon} size={22} color={colors.onSurfaceVariant} />}
+						icon={() => (
+							<Icon as={SettingsIcon} size={22} color={colors.onSurfaceVariant} />
+						)}
 						onPress={() => router.push('/settings')}
 						accessibilityLabel={'Settings'}
 					/>
+					{isHomeFeed && (
+						<IconButton
+							icon={() => (
+								<Icon
+									as={LanguagesIcon}
+									size={22}
+									color={colors.onSurfaceVariant}
+								/>
+							)}
+							onPress={() =>
+								router.push({
+									pathname: '/settings',
+									params: { homeLanguages: '1' },
+								})
+							}
+							accessibilityLabel={'Home languages'}
+						/>
+					)}
 				</View>
 				<Text
 					variant={'headlineMedium'}
@@ -136,7 +162,33 @@ function TabHeader({ initialTabId }: { readonly initialTabId: TabId }) {
 				>
 					{title}
 				</Text>
-				<View style={styles.headerActionSpacer} />
+				<View style={styles.headerActionSpacer}>
+					{isHomeFeed && (
+						<View
+							style={[
+								styles.brandBadge,
+								{
+									backgroundColor: colors.primaryContainer,
+									borderColor: colors.outlineVariant,
+								},
+							]}
+						>
+							<Text
+								variant={'labelLarge'}
+								style={[
+									styles.brandBadgeText,
+									{
+										fontFamily: resolveDisplayFont('800'),
+										color: colors.onPrimaryContainer,
+									},
+								]}
+							>
+								KUR
+							</Text>
+							<View style={[styles.brandDot, { backgroundColor: colors.primary }]} />
+						</View>
+					)}
+				</View>
 			</View>
 		</>
 	);
@@ -318,6 +370,25 @@ const styles = StyleSheet.create({
 	headerActionSpacer: {
 		width: 112,
 		alignItems: 'flex-end',
+	},
+	brandBadge: {
+		minWidth: 64,
+		height: 36,
+		borderRadius: 18,
+		borderWidth: StyleSheet.hairlineWidth,
+		alignItems: 'center',
+		justifyContent: 'center',
+		flexDirection: 'row',
+		gap: 6,
+		paddingHorizontal: 12,
+	},
+	brandBadgeText: {
+		letterSpacing: 0,
+	},
+	brandDot: {
+		width: 6,
+		height: 6,
+		borderRadius: 3,
 	},
 	headerTitle: {
 		flex: 1,

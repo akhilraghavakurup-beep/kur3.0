@@ -11,7 +11,7 @@ import { Image } from 'expo-image';
 import { List } from 'react-native-paper';
 import { ChevronRightIcon, type LucideIcon } from 'lucide-react-native';
 import { Icon } from '@/src/components/ui/icon';
-import { useAppTheme } from '@/lib/theme';
+import { resolveDisplayFont, useAppTheme } from '@/lib/theme';
 
 interface SettingsItemProps {
 	readonly icon: LucideIcon;
@@ -39,7 +39,8 @@ export const SettingsItem = memo(function SettingsItem({
 	const { colors } = useAppTheme();
 
 	const textColor = destructive ? colors.error : colors.onSurface;
-	const iconBgColor = destructive ? `${colors.error}1A` : colors.surfaceContainerHighest;
+	const iconBgColor = destructive ? `${colors.error}1A` : `${colors.primary}14`;
+	const iconColor = destructive ? colors.error : colors.primary;
 
 	const renderLeft = useCallback(
 		() => (
@@ -52,11 +53,11 @@ export const SettingsItem = memo(function SettingsItem({
 						cachePolicy={'memory-disk'}
 					/>
 				) : (
-					<Icon as={IconComponent} size={20} color={textColor} />
+					<Icon as={IconComponent} size={20} color={iconColor} />
 				)}
 			</View>
 		),
-		[IconComponent, iconUrl, iconBgColor, textColor]
+		[IconComponent, iconUrl, iconBgColor, iconColor]
 	);
 
 	const renderRight = useCallback(() => {
@@ -81,7 +82,10 @@ export const SettingsItem = memo(function SettingsItem({
 			right={renderRight}
 			onPress={onPress}
 			titleStyle={[styles.title, { color: textColor, includeFontPadding: false }]}
-			descriptionStyle={{ color: colors.onSurfaceVariant, includeFontPadding: false }}
+			descriptionStyle={[
+				styles.description,
+				{ color: colors.onSurfaceVariant, includeFontPadding: false },
+			]}
 			descriptionNumberOfLines={2}
 			style={styles.item}
 		/>
@@ -90,13 +94,14 @@ export const SettingsItem = memo(function SettingsItem({
 
 const styles = StyleSheet.create({
 	item: {
-		paddingVertical: 6,
+		paddingVertical: 8,
 		paddingHorizontal: 16,
+		minHeight: 68,
 	},
 	iconContainer: {
-		width: 40,
-		height: 40,
-		borderRadius: 20,
+		width: 42,
+		height: 42,
+		borderRadius: 12,
 		alignItems: 'center',
 		justifyContent: 'center',
 		overflow: 'hidden',
@@ -111,6 +116,10 @@ const styles = StyleSheet.create({
 		gap: 8,
 	},
 	title: {
-		fontWeight: '500',
+		fontFamily: resolveDisplayFont('600'),
+		letterSpacing: 0,
+	},
+	description: {
+		marginTop: 3,
 	},
 });

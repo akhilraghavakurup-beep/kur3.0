@@ -7,7 +7,7 @@
 
 import { View, StyleSheet } from 'react-native';
 import { Text, Surface } from 'react-native-paper';
-import { useAppTheme } from '@/lib/theme';
+import { resolveDisplayFont, useAppTheme } from '@/lib/theme';
 
 interface SettingsSectionProps {
 	readonly title: string;
@@ -19,15 +19,18 @@ export function SettingsSection({ title, children }: SettingsSectionProps) {
 
 	return (
 		<View style={styles.container}>
-			<Text
-				variant={'labelMedium'}
-				style={[styles.title, { color: colors.onSurfaceVariant }]}
-			>
-				{title.toUpperCase()}
+			<Text variant={'titleSmall'} style={[styles.title, { color: colors.onSurfaceVariant }]}>
+				{title}
 			</Text>
 			<Surface
 				elevation={0}
-				style={[styles.content, { backgroundColor: colors.surfaceContainerLow }]}
+				style={[
+					styles.content,
+					{
+						backgroundColor: colors.surfaceContainerLow,
+						borderColor: colors.outlineVariant,
+					},
+				]}
 			>
 				{children}
 			</Surface>
@@ -37,15 +40,17 @@ export function SettingsSection({ title, children }: SettingsSectionProps) {
 
 const styles = StyleSheet.create({
 	container: {
-		marginTop: 24,
+		marginTop: 22,
 	},
 	title: {
 		paddingHorizontal: 16,
-		marginBottom: 8,
-		letterSpacing: 0.5,
+		marginBottom: 10,
+		letterSpacing: 0,
+		fontFamily: resolveDisplayFont('700'),
 	},
 	content: {
-		borderRadius: 24,
+		borderRadius: 18,
+		borderWidth: StyleSheet.hairlineWidth,
 		overflow: 'hidden',
 	},
 });

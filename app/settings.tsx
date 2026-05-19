@@ -1,12 +1,13 @@
 import { StyleSheet, View } from 'react-native';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useShallow } from 'zustand/react/shallow';
 import { ActionSheet } from '@/src/components/ui/action-sheet';
 import { ConfirmationDialog } from '@/src/components/ui/confirmation-dialog';
 import { VersionDialog } from '@/src/components/ui/version-dialog';
 import { PlayerAwareScrollView } from '@/src/components/ui/player-aware-scroll-view';
 import { PageLayout } from '@/src/components/ui/page-layout';
+import { Icon } from '@/src/components/ui/icon';
 import { SettingsItem } from '@/src/components/settings/settings-item';
 import { SettingsSection } from '@/src/components/settings/settings-section';
 import { SettingsSelect } from '@/src/components/settings/settings-select';
@@ -15,7 +16,8 @@ import { ProgressStylePicker } from '@/src/components/settings/progress-style-pi
 import { TabOrderSetting } from '@/src/components/settings/tab-order-setting';
 import { SettingsBottomSheet } from '@/src/components/settings/settings-bottom-sheet';
 import { EqualizerSheet } from '@/src/components/settings/equalizer-sheet';
-import { Button, Switch } from 'react-native-paper';
+import { Button, Surface, Switch, Text, TouchableRipple } from 'react-native-paper';
+import { LinearGradient } from 'expo-linear-gradient';
 import {
 	TrashIcon,
 	InfoIcon,
@@ -32,6 +34,7 @@ import {
 	TagIcon,
 	FolderOpenIcon,
 	LanguagesIcon,
+	type LucideIcon,
 } from 'lucide-react-native';
 import {
 	THEME_OPTIONS,
@@ -59,8 +62,11 @@ import { useToast } from '@/src/hooks/use-toast';
 import Constants from 'expo-constants';
 import { permissionService } from '@/src/application/services/permission-service';
 import { homeFeedService } from '@/src/application/services/home-feed-service';
+import { resolveDisplayFont, useAppTheme } from '@/lib/theme';
 
 export default function SettingsScreen() {
+	const { homeLanguages } = useLocalSearchParams<{ homeLanguages?: string }>();
+	const { colors } = useAppTheme();
 	const homeContentPreferences = useHomeContentPreferences();
 	const setHomeContentPreferences = useSetHomeContentPreferences();
 	const { tracks, playlists, favorites } = useLibraryStore(
@@ -308,6 +314,12 @@ export default function SettingsScreen() {
 		}
 	}, [homeContentPreferences, homeLanguagesSheetVisible]);
 
+	useEffect(() => {
+		if (homeLanguages === '1') {
+			setHomeLanguagesSheetVisible(true);
+		}
+	}, [homeLanguages]);
+
 	const handleDraftHomeLanguageToggle = useCallback(
 		(language: (typeof homeLanguageOptions)[number]['value'], enabled: boolean) => {
 			setDraftHomeLanguages((current) =>
@@ -355,6 +367,90 @@ export default function SettingsScreen() {
 				style={styles.scrollView}
 				contentContainerStyle={styles.scrollContent}
 			>
+				<Surface
+					elevation={0}
+					style={[
+						styles.hero,
+						{
+							backgroundColor: colors.surfaceContainerHigh,
+							borderColor: colors.outlineVariant,
+						},
+					]}
+				>
+					<LinearGradient
+						pointerEvents={'none'}
+						colors={[`${colors.primary}24`, `${colors.secondary}10`, 'transparent']}
+						start={{ x: 0, y: 0 }}
+						end={{ x: 1, y: 1 }}
+						style={styles.heroGradient}
+					/>
+					<View style={styles.heroTop}>
+						<View style={[styles.heroLogo, { backgroundColor: colors.primary }]}>
+							<Text
+								variant={'headlineSmall'}
+								style={[
+									styles.heroLogoText,
+									{
+										color: colors.onPrimary,
+										fontFamily: resolveDisplayFont('800'),
+									},
+								]}
+							>
+								K
+							</Text>
+						</View>
+						<View style={styles.heroCopy}>
+							<Text
+								variant={'headlineSmall'}
+								style={[
+									styles.heroTitle,
+									{
+										color: colors.onSurface,
+										fontFamily: resolveDisplayFont('700'),
+									},
+								]}
+							>
+								Kur Music
+							</Text>
+							<Text
+								variant={'bodyMedium'}
+								numberOfLines={2}
+								style={[styles.heroSubtitle, { color: colors.onSurfaceVariant }]}
+							>
+								Version {appVersion} - {homeLanguageLabel}
+							</Text>
+						</View>
+					</View>
+					<View style={styles.heroMetrics}>
+						<SettingsHeroMetric label={'Tracks'} value={tracks.length.toString()} />
+						<SettingsHeroMetric
+							label={'Downloads'}
+							value={stats.completedCount.toString()}
+						/>
+						<SettingsHeroMetric label={'Favorites'} value={favorites.size.toString()} />
+					</View>
+					<View style={styles.quickActions}>
+						<SettingsQuickAction
+							icon={LanguagesIcon}
+							label={'Languages'}
+							value={homeLanguageLabel}
+							onPress={() => setHomeLanguagesSheetVisible(true)}
+						/>
+						<SettingsQuickAction
+							icon={WifiOffIcon}
+							label={'Offline'}
+							value={offlineMode ? 'On' : 'Off'}
+							onPress={toggleOfflineMode}
+						/>
+						<SettingsQuickAction
+							icon={SlidersHorizontalIcon}
+							label={'Equalizer'}
+							value={eqEnabled ? currentPreset.name : 'Off'}
+							onPress={openEqualizerSheet}
+						/>
+					</View>
+				</Surface>
+
 				<SettingsSection title={'Plugins'}>
 					<SettingsItem
 						icon={PlugIcon}
@@ -476,7 +572,7 @@ export default function SettingsScreen() {
 					<SettingsItem
 						icon={HardDriveIcon}
 						title={'Storage used'}
-						subtitle={`${formatFileSize(stats.totalSize)} · ${stats.completedCount} files`}
+						subtitle={`${formatFileSize(stats.totalSize)} - ${stats.completedCount} files`}
 					/>
 					{stats.completedCount > 0 && (
 						<SettingsItem
@@ -500,7 +596,7 @@ export default function SettingsScreen() {
 					<SettingsItem
 						icon={InfoIcon}
 						title={'Library stats'}
-						subtitle={`${tracks.length} tracks · ${playlists.length} playlists · ${favorites.size} favorites`}
+						subtitle={`${tracks.length} tracks - ${playlists.length} playlists - ${favorites.size} favorites`}
 					/>
 					<SettingsItem
 						icon={TrashIcon}
@@ -672,13 +768,173 @@ export default function SettingsScreen() {
 	);
 }
 
+function SettingsHeroMetric({ label, value }: { readonly label: string; readonly value: string }) {
+	const { colors } = useAppTheme();
+
+	return (
+		<View style={styles.heroMetric}>
+			<Text
+				variant={'titleMedium'}
+				numberOfLines={1}
+				style={[
+					styles.heroMetricValue,
+					{ color: colors.onSurface, fontFamily: resolveDisplayFont('700') },
+				]}
+			>
+				{value}
+			</Text>
+			<Text
+				variant={'labelSmall'}
+				numberOfLines={1}
+				style={[styles.heroMetricLabel, { color: colors.onSurfaceVariant }]}
+			>
+				{label}
+			</Text>
+		</View>
+	);
+}
+
+function SettingsQuickAction({
+	icon,
+	label,
+	value,
+	onPress,
+}: {
+	readonly icon: LucideIcon;
+	readonly label: string;
+	readonly value: string;
+	readonly onPress: () => void;
+}) {
+	const { colors } = useAppTheme();
+
+	return (
+		<TouchableRipple
+			onPress={onPress}
+			borderless
+			style={[
+				styles.quickAction,
+				{
+					backgroundColor: colors.surfaceContainerHighest,
+					borderColor: colors.outlineVariant,
+				},
+			]}
+		>
+			<View style={styles.quickActionInner}>
+				<View style={[styles.quickActionIcon, { backgroundColor: `${colors.primary}18` }]}>
+					<Icon as={icon} size={18} color={colors.primary} />
+				</View>
+				<View style={styles.quickActionCopy}>
+					<Text
+						variant={'labelMedium'}
+						numberOfLines={1}
+						style={[styles.quickActionLabel, { color: colors.onSurface }]}
+					>
+						{label}
+					</Text>
+					<Text
+						variant={'labelSmall'}
+						numberOfLines={1}
+						style={{ color: colors.onSurfaceVariant }}
+					>
+						{value}
+					</Text>
+				</View>
+			</View>
+		</TouchableRipple>
+	);
+}
+
 const styles = StyleSheet.create({
 	scrollView: {
 		flex: 1,
 		paddingHorizontal: 8,
 	},
 	scrollContent: {
+		paddingTop: 4,
 		paddingBottom: 32,
+	},
+	hero: {
+		borderRadius: 22,
+		borderWidth: StyleSheet.hairlineWidth,
+		overflow: 'hidden',
+		padding: 18,
+		gap: 16,
+	},
+	heroGradient: {
+		position: 'absolute',
+		top: 0,
+		right: 0,
+		bottom: 0,
+		left: 0,
+	},
+	heroTop: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		gap: 14,
+	},
+	heroLogo: {
+		width: 58,
+		height: 58,
+		borderRadius: 18,
+		alignItems: 'center',
+		justifyContent: 'center',
+	},
+	heroLogoText: {
+		letterSpacing: 0,
+	},
+	heroCopy: {
+		flex: 1,
+		minWidth: 0,
+	},
+	heroTitle: {
+		letterSpacing: 0,
+	},
+	heroSubtitle: {
+		marginTop: 2,
+	},
+	heroMetrics: {
+		flexDirection: 'row',
+		gap: 10,
+	},
+	heroMetric: {
+		flex: 1,
+		minWidth: 0,
+	},
+	heroMetricValue: {
+		letterSpacing: 0,
+	},
+	heroMetricLabel: {
+		marginTop: 2,
+		letterSpacing: 0,
+	},
+	quickActions: {
+		flexDirection: 'row',
+		gap: 8,
+	},
+	quickAction: {
+		flex: 1,
+		minWidth: 0,
+		borderRadius: 16,
+		borderWidth: StyleSheet.hairlineWidth,
+		overflow: 'hidden',
+	},
+	quickActionInner: {
+		padding: 10,
+		gap: 8,
+	},
+	quickActionIcon: {
+		width: 30,
+		height: 30,
+		borderRadius: 10,
+		alignItems: 'center',
+		justifyContent: 'center',
+	},
+	quickActionCopy: {
+		minWidth: 0,
+	},
+	quickActionLabel: {
+		fontWeight: '700',
+		letterSpacing: 0,
 	},
 	homeLanguageActions: {
 		flexDirection: 'row',

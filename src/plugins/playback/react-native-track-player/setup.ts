@@ -80,6 +80,8 @@ async function _doSetup(): Promise<boolean> {
 		await TrackPlayer.updateOptions({
 			capabilities: [
 				Capability.Play,
+				Capability.PlayFromId,
+				Capability.PlayFromSearch,
 				Capability.Pause,
 				Capability.Stop,
 				Capability.SkipToNext,
