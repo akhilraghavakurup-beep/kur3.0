@@ -14,6 +14,7 @@ import { appResumeManager } from '@/src/application/services/app-resume-manager'
 import { useAppState } from '@/src/hooks/use-app-state';
 import { FloatingPlayer } from '@/src/components/floating-player';
 import { TrackOptionsSheet } from '@/src/components/track-options-menu';
+import { TagEditorSheet } from '@/src/components/track-options-menu/tag-editor-sheet';
 import { SleepTimerSheet } from '@/src/components/player/sleep-timer-sheet';
 import { QueueSheet } from '@/src/components/player/queue-sheet';
 import { ToastContainer } from '@/src/components/ui/toast';
@@ -97,6 +98,7 @@ function AppContent() {
 			<QueueSheet isOpen={queueSheetOpen} onClose={closeQueueSheet} />
 			<SleepTimerSheet isOpen={sleepTimerSheetOpen} onClose={closeSleepTimerSheet} />
 			<TrackOptionsSheet />
+			<TagEditorSheet />
 			<ToastContainer />
 			<ScanProgressToast />
 			<ImportProgressToast />

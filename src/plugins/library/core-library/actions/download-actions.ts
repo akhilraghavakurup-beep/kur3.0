@@ -24,6 +24,14 @@ export function getDownloadActions(context: TrackActionContext): TrackAction[] {
 	if (isDownloaded) {
 		return [
 			{
+				id: CORE_ACTION_IDS.EDIT_TAGS,
+				label: 'Edit Tags',
+				icon: 'PenLine',
+				group: 'secondary',
+				priority: 5,
+				enabled: true,
+			},
+			{
 				id: CORE_ACTION_IDS.REMOVE_DOWNLOAD,
 				label: 'Remove Download',
 				icon: 'Trash2',

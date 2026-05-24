@@ -143,11 +143,13 @@ interface SettingsState {
 	experimentalBackdropGlow: boolean;
 	experimentalHapticProgress: boolean;
 	experimentalJioSaavnLyrics: boolean;
+	experimentalCrossfade: boolean;
 
 	setThemePreference: (preference: ThemePreference) => void;
 	setExperimentalBackdropGlow: (enabled: boolean) => void;
 	setExperimentalHapticProgress: (enabled: boolean) => void;
 	setExperimentalJioSaavnLyrics: (enabled: boolean) => void;
+	setExperimentalCrossfade: (enabled: boolean) => void;
 	setDefaultTab: (tab: DefaultTab) => void;
 	setHomeContentPreferences: (
 		preferences: readonly unknown[]
@@ -271,6 +273,7 @@ export const useSettingsStore = create<SettingsState>()(
 			experimentalBackdropGlow: false,
 			experimentalHapticProgress: false,
 			experimentalJioSaavnLyrics: false,
+			experimentalCrossfade: false,
 
 			setThemePreference: (preference: ThemePreference) => {
 				set({ themePreference: preference });
@@ -395,6 +398,9 @@ export const useSettingsStore = create<SettingsState>()(
 			setExperimentalJioSaavnLyrics: (enabled: boolean) => {
 				set({ experimentalJioSaavnLyrics: enabled });
 			},
+			setExperimentalCrossfade: (enabled: boolean) => {
+				set({ experimentalCrossfade: enabled });
+			},
 			setDownloadLocationMode: (mode: DownloadLocationMode) => {
 				set({ downloadLocationMode: mode });
 			},
@@ -445,6 +451,7 @@ export const useSettingsStore = create<SettingsState>()(
 					experimentalBackdropGlow: false,
 					experimentalHapticProgress: false,
 					experimentalJioSaavnLyrics: false,
+					experimentalCrossfade: false,
 				});
 				await syncNativeLanguageCookie(defaults);
 			},
@@ -603,6 +610,9 @@ export const useExperimentalHapticProgress = () =>
 
 export const useExperimentalJioSaavnLyrics = () =>
 	useSettingsStore((state) => state.experimentalJioSaavnLyrics);
+
+export const useExperimentalCrossfade = () =>
+	useSettingsStore((state) => state.experimentalCrossfade);
 
 export function waitForSettingsHydration(): Promise<void> {
 	return hydrationPromise;

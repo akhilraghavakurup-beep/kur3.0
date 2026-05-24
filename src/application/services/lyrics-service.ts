@@ -69,6 +69,44 @@ export class LyricsService {
 		trackId: TrackId,
 		cacheKey: string
 	): Promise<Result<Lyrics | null, Error>> {
+	// First try using the active LyricsPlugin orchestrator if available
+	try {
+		const { getLyricsPlugin } = await import('../../plugins/lyrics/core/lyrics-plugin');
+		const lyricsPlugin = getLyricsPlugin();
+		if (lyricsPlugin) {
+			logger.debug('Fetching lyrics via LyricsPlugin');
+
+			// Resolve the full Track from the matching metadata provider by trackId
+			const { getPluginRegistry } = await import('../../plugins/core/registry/plugin-registry');
+			const providers = getPluginRegistry().getActiveMetadataProviders();
+			const matchingProvider = providers.find(
+				(p) => p.manifest.id === trackId.sourceType
+			);
+
+			let resolvedTrack = null;
+			if (matchingProvider && matchingProvider.getTrackInfo) {
+				const trackResult = await matchingProvider.getTrackInfo(trackId);
+				if (trackResult.success) {
+					resolvedTrack = trackResult.data;
+				}
+			}
+
+			if (resolvedTrack) {
+				const lyrics = await lyricsPlugin.getLyrics(resolvedTrack);
+				if (lyrics) {
+					logger.debug('Got lyrics from LyricsPlugin');
+					this.lyricsCache.set(cacheKey, {
+						lyrics,
+						timestamp: Date.now(),
+					});
+					return ok(lyrics);
+				}
+			}
+		}
+	} catch (error) {
+		logger.warn('Failed to fetch lyrics via LyricsPlugin:', error);
+	}
+
 		const providersWithLyrics = this.metadataProviders.filter(
 			(p) => p.hasCapability('get-lyrics') && p.getLyrics
 		);

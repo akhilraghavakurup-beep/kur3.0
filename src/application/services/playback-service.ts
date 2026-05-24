@@ -132,6 +132,56 @@ export class PlaybackService {
 		);
 	}
 
+	private _preBufferNextTrackRef = '';
+	private _fadeInterval: NodeJS.Timeout | null = null;
+
+	async fadeVolume(target: number, durationMs = 1000): Promise<void> {
+		if (this._fadeInterval) {
+			clearInterval(this._fadeInterval);
+			this._fadeInterval = null;
+		}
+
+		const startVol = usePlayerStore.getState().volume;
+		const steps = 15;
+		const stepTime = durationMs / steps;
+		const volStep = (target - startVol) / steps;
+		let currentStep = 0;
+
+		return new Promise((resolve) => {
+			this._fadeInterval = setInterval(async () => {
+				currentStep++;
+				const nextVol = Math.max(0, Math.min(1, startVol + volStep * currentStep));
+				await this.setVolume(nextVol);
+
+				if (currentStep >= steps) {
+					if (this._fadeInterval) {
+						clearInterval(this._fadeInterval);
+						this._fadeInterval = null;
+					}
+					resolve();
+				}
+			}, stepTime);
+		});
+	}
+
+	private async _preBufferNextTrackIfNeeded(position: Duration, duration: Duration): Promise<void> {
+		const timeRemaining = duration.totalSeconds - position.totalSeconds;
+		if (timeRemaining > 0 && timeRemaining < 15) {
+			const store = usePlayerStore.getState();
+			const nextIndex = store.queueIndex + 1;
+			if (nextIndex < store.queue.length) {
+				const nextTrack = store.queue[nextIndex];
+				const nextTrackId = nextTrack.id.value;
+
+				if (this._preBufferNextTrackRef !== nextTrackId && !this._streamCache.has(nextTrackId)) {
+					this._preBufferNextTrackRef = nextTrackId;
+					logger.debug(`Pre-buffering next track stream URL: ${nextTrack.title}`);
+					void this._getAudioStream(nextTrack).catch(() => {});
+				}
+			}
+		}
+	}
+
 	async play(track: Track): Promise<Result<void, Error>> {
 		return this.withPlayLock(async () => {
 			playbackTimer.start(track.title);
@@ -257,8 +307,37 @@ export class PlaybackService {
 	}
 
 	async skipToNext(): Promise<Result<void, Error>> {
+		const settings = useSettingsStore.getState();
 		const state = usePlayerStore.getState();
 		const endedTrack = state.currentTrack;
+
+		if (settings.experimentalCrossfade && endedTrack && this.activeProvider) {
+			const originalVolume = state.volume;
+			await this.fadeVolume(0, 1000);
+
+			state.skipToNext();
+
+			let currentTrack = usePlayerStore.getState().currentTrack;
+			if (!currentTrack && endedTrack && settings.autoplaySimilarOnQueueEnd) {
+				const autoAppend = await this.appendRecommendationsFromTrack(endedTrack, 15);
+				if (autoAppend.success && autoAppend.data > 0) {
+					const refreshed = usePlayerStore.getState();
+					refreshed.skipToNext();
+					currentTrack = usePlayerStore.getState().currentTrack;
+				}
+			}
+
+			if (currentTrack) {
+				const result = await this.play(currentTrack);
+				await this.setVolume(0);
+				void this.fadeVolume(originalVolume, 1000);
+				return result;
+			} else {
+				await this.setVolume(originalVolume);
+				return ok(undefined);
+			}
+		}
+
 		state.skipToNext();
 
 		let currentTrack = usePlayerStore.getState().currentTrack;
@@ -555,9 +634,13 @@ export class PlaybackService {
 				logger.debug(`Status change: ${event.status}`);
 				store._setStatus(event.status);
 				break;
-			case 'position-change':
+			case 'position-change': {
 				store._setPosition(event.position);
+				if (useSettingsStore.getState().experimentalCrossfade) {
+					this._preBufferNextTrackIfNeeded(event.position, store.duration);
+				}
 				break;
+			}
 			case 'duration-change':
 				store._setDuration(event.duration);
 				break;

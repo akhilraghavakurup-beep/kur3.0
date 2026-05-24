@@ -9,6 +9,7 @@ import { playbackService } from '@/src/application/services/playback-service';
 import { useIsFavorite } from '@/src/application/state/library-store';
 import { setNavigationTrack } from '@/src/application/state/navigation-context-store';
 import { usePlayerUIStore } from '@/src/application/state/player-ui-store';
+import { useTagEditorStore } from '@/src/application/state/tag-editor-store';
 import { useToast } from '@/src/hooks/use-toast';
 import { useRefreshTrackOptionsActions } from '@/src/application/state/track-options-store';
 
@@ -125,6 +126,10 @@ export function useTrackActionExecutor({
 
 				case CORE_ACTION_IDS.TOGGLE_LYRICS:
 					usePlayerUIStore.getState().toggleShowLyrics();
+					return;
+
+				case CORE_ACTION_IDS.EDIT_TAGS:
+					useTagEditorStore.getState().openTagEditor(currentTrack);
 					return;
 
 				default: {

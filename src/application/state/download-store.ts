@@ -32,6 +32,10 @@ interface DownloadState {
 	removeDownload: (trackId: string) => void;
 	clearActiveDownloads: () => void;
 	clearAll: () => void;
+	updateDownloadedTrackMetadata: (
+		trackId: string,
+		updates: { title?: string; artistName?: string; albumName?: string; artworkUrl?: string }
+	) => void;
 
 	isDownloaded: (trackId: string) => boolean;
 	isDownloading: (trackId: string) => boolean;
@@ -156,6 +160,41 @@ export const useDownloadStore = create<DownloadState>()(
 				});
 			},
 
+			updateDownloadedTrackMetadata: (
+				trackId: string,
+				updates: { title?: string; artistName?: string; albumName?: string; artworkUrl?: string }
+			) => {
+				set((state) => {
+					const existing = state.downloadedTracks.get(trackId);
+					if (!existing) return state;
+
+					const updated: DownloadedTrackMetadata = {
+						...existing,
+						...(updates.title !== undefined && { title: updates.title }),
+						...(updates.artistName !== undefined && { artistName: updates.artistName }),
+						...(updates.albumName !== undefined && { albumName: updates.albumName }),
+						...(updates.artworkUrl !== undefined && { artworkUrl: updates.artworkUrl }),
+					};
+
+					// Also keep downloads map in sync
+					const existingDownload = state.downloads.get(trackId);
+					const newDownloads = new Map(state.downloads);
+					if (existingDownload) {
+						newDownloads.set(trackId, {
+							...existingDownload,
+							...(updates.title !== undefined && { title: updates.title }),
+							...(updates.artistName !== undefined && { artistName: updates.artistName }),
+							...(updates.albumName !== undefined && { albumName: updates.albumName }),
+							...(updates.artworkUrl !== undefined && { artworkUrl: updates.artworkUrl }),
+						});
+					}
+
+					const newDownloadedTracks = new Map(state.downloadedTracks);
+					newDownloadedTracks.set(trackId, updated);
+					return { downloads: newDownloads, downloadedTracks: newDownloadedTracks };
+				});
+			},
+
 			isDownloaded: (trackId: string) => {
 				return get().downloadedTracks.has(trackId);
 			},
@@ -230,6 +269,8 @@ export const useDownloadStore = create<DownloadState>()(
 
 export const useDownloads = () => useDownloadStore((state) => state.downloads);
 export const useDownloadedTracks = () => useDownloadStore((state) => state.downloadedTracks);
+export const useUpdateDownloadedTrackMetadata = () =>
+	useDownloadStore((state) => state.updateDownloadedTrackMetadata);
 export const useIsDownloaded = (trackId: string) =>
 	useDownloadStore((state) => state.isDownloaded(trackId));
 export const useIsDownloading = (trackId: string) =>

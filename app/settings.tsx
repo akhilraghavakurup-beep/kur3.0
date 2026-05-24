@@ -110,6 +110,8 @@ export default function SettingsScreen() {
 		setExperimentalHapticProgress,
 		experimentalJioSaavnLyrics,
 		setExperimentalJioSaavnLyrics,
+		experimentalCrossfade,
+		setExperimentalCrossfade,
 	} = useSettingsStore(
 		useShallow((state) => ({
 			themePreference: state.themePreference,
@@ -144,6 +146,8 @@ export default function SettingsScreen() {
 			setExperimentalHapticProgress: state.setExperimentalHapticProgress,
 			experimentalJioSaavnLyrics: state.experimentalJioSaavnLyrics,
 			setExperimentalJioSaavnLyrics: state.setExperimentalJioSaavnLyrics,
+			experimentalCrossfade: state.experimentalCrossfade,
+			setExperimentalCrossfade: state.setExperimentalCrossfade,
 		}))
 	);
 	const { stats } = useDownloadQueue();
@@ -166,16 +170,36 @@ export default function SettingsScreen() {
 		[showProviderLabel, setShowProviderLabel]
 	);
 	const backdropGlowSwitch = useMemo(
-		() => <Switch value={experimentalBackdropGlow} onValueChange={setExperimentalBackdropGlow} />,
-		[experimentalBackdropGlow, setExperimentalBackdropGlow]
+		() => (
+			<View pointerEvents={'none'}>
+				<Switch value={experimentalBackdropGlow} />
+			</View>
+		),
+		[experimentalBackdropGlow]
 	);
 	const hapticProgressSwitch = useMemo(
-		() => <Switch value={experimentalHapticProgress} onValueChange={setExperimentalHapticProgress} />,
-		[experimentalHapticProgress, setExperimentalHapticProgress]
+		() => (
+			<View pointerEvents={'none'}>
+				<Switch value={experimentalHapticProgress} />
+			</View>
+		),
+		[experimentalHapticProgress]
 	);
 	const jioSaavnLyricsSwitch = useMemo(
-		() => <Switch value={experimentalJioSaavnLyrics} onValueChange={setExperimentalJioSaavnLyrics} />,
-		[experimentalJioSaavnLyrics, setExperimentalJioSaavnLyrics]
+		() => (
+			<View pointerEvents={'none'}>
+				<Switch value={experimentalJioSaavnLyrics} />
+			</View>
+		),
+		[experimentalJioSaavnLyrics]
+	);
+	const crossfadeSwitch = useMemo(
+		() => (
+			<View pointerEvents={'none'}>
+				<Switch value={experimentalCrossfade} />
+			</View>
+		),
+		[experimentalCrossfade]
 	);
 	const autoplaySimilarSwitch = useMemo(
 		() => (
@@ -677,6 +701,13 @@ export default function SettingsScreen() {
 						subtitle={'Fetch official plain-text lyrics directly from JioSaavn APIs'}
 						rightElement={jioSaavnLyricsSwitch}
 						onPress={() => setExperimentalJioSaavnLyrics(!experimentalJioSaavnLyrics)}
+					/>
+					<SettingsItem
+						icon={FlaskConicalIcon}
+						title={'DJ Crossfade & Pre-Buffer'}
+						subtitle={'Volume-faded transitions and latency-free track pre-loading'}
+						rightElement={crossfadeSwitch}
+						onPress={() => setExperimentalCrossfade(!experimentalCrossfade)}
 					/>
 				</SettingsSection>
 

@@ -60,6 +60,7 @@ export const CORE_ACTION_IDS = {
 	SLEEP_TIMER: 'sleep-timer',
 	TOGGLE_LYRICS: 'toggle-lyrics',
 	VIEW_QUEUE: 'view-queue',
+	EDIT_TAGS: 'edit-tags',
 } as const;
 
 export type CoreActionId = (typeof CORE_ACTION_IDS)[keyof typeof CORE_ACTION_IDS];
