@@ -16,6 +16,9 @@ import Animated, {
 	LinearTransition,
 	ZoomIn,
 	runOnJS,
+	useSharedValue,
+	useAnimatedStyle,
+	withTiming,
 } from 'react-native-reanimated';
 import { Icon } from '@/src/components/ui/icon';
 import { ChevronLeftIcon, DownloadIcon, CheckIcon, LoaderCircleIcon, ListMusic } from 'lucide-react-native';
@@ -38,7 +41,9 @@ import { useCurrentTrack, usePlayerError } from '@/src/application/state/player-
 import { useIsDownloaded, useIsDownloading } from '@/src/application/state/download-store';
 import { useDownloadActions } from '@/src/hooks/use-download-actions';
 import { usePlayerActions } from '@/src/hooks/use-player';
-import { usePreferredStreamQuality } from '@/src/application/state/settings-store';
+import { usePreferredStreamQuality, useSettingsStore } from '@/src/application/state/settings-store';
+import { useArtworkColors } from '@/src/hooks/use-artwork-colors';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const BLUR_INTENSITY = 120;
 const DARK_SCRIM_OPACITY = 0.6;
@@ -63,6 +68,53 @@ function replaceColorsInSource(source: AnimationObject, color: string): Animatio
 	return JSON.parse(replaced) as AnimationObject;
 }
 
+function AmbientGlowBackdrop({ dominant, secondary }: { dominant: string; secondary: string }) {
+	const [currentColors, setCurrentColors] = useState({ dominant, secondary });
+	const [prevColors, setPrevColors] = useState<{ dominant: string; secondary: string } | null>(null);
+	const fade = useSharedValue(0);
+
+	useEffect(() => {
+		if (dominant !== currentColors.dominant || secondary !== currentColors.secondary) {
+			setPrevColors(currentColors);
+			setCurrentColors({ dominant, secondary });
+			fade.value = 0;
+			fade.value = withTiming(1, { duration: 1000 });
+		}
+	}, [dominant, secondary]);
+
+	const animatedStyle = useAnimatedStyle(() => ({
+		opacity: fade.value,
+	}));
+
+	return (
+		<View style={StyleSheet.absoluteFill}>
+			<View style={[StyleSheet.absoluteFill, { backgroundColor: '#121212' }]} />
+			{prevColors && (
+				<LinearGradient
+					colors={[`${prevColors.dominant}66`, `${prevColors.secondary}22`, '#121212']}
+					start={{ x: 0, y: 0 }}
+					end={{ x: 1, y: 1 }}
+					style={StyleSheet.absoluteFill}
+				/>
+			)}
+			<Animated.View style={[StyleSheet.absoluteFill, animatedStyle]}>
+				<LinearGradient
+					colors={[`${currentColors.dominant}66`, `${currentColors.secondary}22`, '#121212']}
+					start={{ x: 0, y: 0 }}
+					end={{ x: 1, y: 1 }}
+					style={StyleSheet.absoluteFill}
+				/>
+			</Animated.View>
+			<BlurView
+				intensity={BLUR_INTENSITY}
+				experimentalBlurMethod={'dimezisBlurView'}
+				style={StyleSheet.absoluteFill}
+				tint={'dark'}
+			/>
+		</View>
+	);
+}
+
 export default function PlayerScreen() {
 	const currentTrack = useCurrentTrack();
 	const artwork = currentTrack ? getLargestArtwork(currentTrack.artwork) : undefined;
@@ -83,6 +135,9 @@ function PlayerScreenContent() {
 	const { colors, backgroundStyle, dominantColor } = usePlayerTheme();
 	const showLyrics = useShowLyrics();
 	const openQueueSheet = usePlayerUIStore((s) => s.openQueueSheet);
+	const experimentalBackdropGlow = useSettingsStore(
+		(state) => state.experimentalBackdropGlow
+	);
 	const [artworkLoaded, setArtworkLoaded] = useState(false);
 	const { skipToNext, skipToPrevious } = usePlayerActions();
 
@@ -125,6 +180,9 @@ function PlayerScreenContent() {
 
 	const artwork = currentTrack ? getLargestArtwork(currentTrack.artwork) : undefined;
 	const artworkUrl = artwork?.url;
+	const artworkColors = useArtworkColors(artworkUrl);
+	const dominant = artworkColors.dominant ?? colors.primary;
+	const secondary = artworkColors.secondary ?? colors.secondary;
 
 	useEffect(() => {
 		if (!currentTrack && pathname === '/player') {
@@ -174,7 +232,11 @@ function PlayerScreenContent() {
 		<GestureDetector gesture={swipeGesture}>
 			<View style={[styles.container, { backgroundColor: appColors.background }]}>
 				<StatusBar style={statusBarStyle} />
-				{renderBackground(backgroundStyle, artworkUrl, appColors.background, dominantColor)}
+				{experimentalBackdropGlow ? (
+					<AmbientGlowBackdrop dominant={dominant} secondary={secondary} />
+				) : (
+					renderBackground(backgroundStyle, artworkUrl, appColors.background, dominantColor)
+				)}
 
 				<SafeAreaView style={styles.safeArea}>
 					<View style={styles.content}>

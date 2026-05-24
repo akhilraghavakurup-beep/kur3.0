@@ -272,6 +272,8 @@ export function mapSong(song: JioSaavnSong): Track | null {
 			genre: song.language ? decode(song.language) : undefined,
 			popularity: parseNumber(song.playCount ?? song.play_count),
 			explicit: song.explicitContent === true || song.explicitContent === '1',
+			hasLyrics: song.hasLyrics,
+			lyricsId: song.lyricsId,
 		},
 	};
 

@@ -34,6 +34,7 @@ import {
 	TagIcon,
 	FolderOpenIcon,
 	LanguagesIcon,
+	FlaskConicalIcon,
 	type LucideIcon,
 } from 'lucide-react-native';
 import {
@@ -103,6 +104,12 @@ export default function SettingsScreen() {
 		setMusicDownloadDirectory,
 		setCustomDownloadDirectory,
 		resetDownloadLocation,
+		experimentalBackdropGlow,
+		setExperimentalBackdropGlow,
+		experimentalHapticProgress,
+		setExperimentalHapticProgress,
+		experimentalJioSaavnLyrics,
+		setExperimentalJioSaavnLyrics,
 	} = useSettingsStore(
 		useShallow((state) => ({
 			themePreference: state.themePreference,
@@ -131,6 +138,12 @@ export default function SettingsScreen() {
 			setMusicDownloadDirectory: state.setMusicDownloadDirectory,
 			setCustomDownloadDirectory: state.setCustomDownloadDirectory,
 			resetDownloadLocation: state.resetDownloadLocation,
+			experimentalBackdropGlow: state.experimentalBackdropGlow,
+			setExperimentalBackdropGlow: state.setExperimentalBackdropGlow,
+			experimentalHapticProgress: state.experimentalHapticProgress,
+			setExperimentalHapticProgress: state.setExperimentalHapticProgress,
+			experimentalJioSaavnLyrics: state.experimentalJioSaavnLyrics,
+			setExperimentalJioSaavnLyrics: state.setExperimentalJioSaavnLyrics,
 		}))
 	);
 	const { stats } = useDownloadQueue();
@@ -151,6 +164,18 @@ export default function SettingsScreen() {
 	const providerLabelSwitch = useMemo(
 		() => <Switch value={showProviderLabel} onValueChange={setShowProviderLabel} />,
 		[showProviderLabel, setShowProviderLabel]
+	);
+	const backdropGlowSwitch = useMemo(
+		() => <Switch value={experimentalBackdropGlow} onValueChange={setExperimentalBackdropGlow} />,
+		[experimentalBackdropGlow, setExperimentalBackdropGlow]
+	);
+	const hapticProgressSwitch = useMemo(
+		() => <Switch value={experimentalHapticProgress} onValueChange={setExperimentalHapticProgress} />,
+		[experimentalHapticProgress, setExperimentalHapticProgress]
+	);
+	const jioSaavnLyricsSwitch = useMemo(
+		() => <Switch value={experimentalJioSaavnLyrics} onValueChange={setExperimentalJioSaavnLyrics} />,
+		[experimentalJioSaavnLyrics, setExperimentalJioSaavnLyrics]
 	);
 	const autoplaySimilarSwitch = useMemo(
 		() => (
@@ -628,6 +653,30 @@ export default function SettingsScreen() {
 						subtitle={'Clear all data and reset to defaults'}
 						onPress={handleFactoryReset}
 						destructive
+					/>
+				</SettingsSection>
+
+				<SettingsSection title={'Experimental features'}>
+					<SettingsItem
+						icon={FlaskConicalIcon}
+						title={'Ambient Canvas Glow'}
+						subtitle={'Fluid backdrop colors dynamically derived from track art'}
+						rightElement={backdropGlowSwitch}
+						onPress={() => setExperimentalBackdropGlow(!experimentalBackdropGlow)}
+					/>
+					<SettingsItem
+						icon={FlaskConicalIcon}
+						title={'Tactile Seeker Haptics'}
+						subtitle={'Physical vibration clicks at 1% detents during seek gestures'}
+						rightElement={hapticProgressSwitch}
+						onPress={() => setExperimentalHapticProgress(!experimentalHapticProgress)}
+					/>
+					<SettingsItem
+						icon={FlaskConicalIcon}
+						title={'JioSaavn Official Lyrics'}
+						subtitle={'Fetch official plain-text lyrics directly from JioSaavn APIs'}
+						rightElement={jioSaavnLyricsSwitch}
+						onPress={() => setExperimentalJioSaavnLyrics(!experimentalJioSaavnLyrics)}
 					/>
 				</SettingsSection>
 

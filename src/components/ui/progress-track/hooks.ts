@@ -20,6 +20,8 @@ import {
 	type SharedValue,
 } from 'react-native-reanimated';
 import { Gesture } from 'react-native-gesture-handler';
+import * as Haptics from 'expo-haptics';
+import { useSettingsStore } from '@application/state/settings-store';
 import { WAVE_AMPLITUDE, WAVELENGTH } from './types';
 import { buildAnimatedWavePath } from './utils';
 
@@ -86,13 +88,26 @@ export function useSeekGesture(
 	const thumbScale = useSharedValue(1);
 	const isDragging = useRef(false);
 	const [localProgress, setLocalProgress] = useState<number | null>(null);
+	const experimentalHapticProgress = useSettingsStore(
+		(state) => state.experimentalHapticProgress
+	);
+	const lastTriggeredPercentRef = useRef<number>(-1);
 
 	const updateLocalProgress = useCallback(
 		(x: number) => {
 			const clampedX = Math.max(0, Math.min(x, trackWidth));
-			setLocalProgress(trackWidth > 0 ? clampedX / trackWidth : 0);
+			const progress = trackWidth > 0 ? clampedX / trackWidth : 0;
+			setLocalProgress(progress);
+
+			if (experimentalHapticProgress) {
+				const currentPercent = Math.round(progress * 100);
+				if (currentPercent !== lastTriggeredPercentRef.current) {
+					lastTriggeredPercentRef.current = currentPercent;
+					Haptics.selectionAsync().catch(() => {});
+				}
+			}
 		},
-		[trackWidth]
+		[trackWidth, experimentalHapticProgress]
 	);
 
 	const finishSeeking = useCallback(

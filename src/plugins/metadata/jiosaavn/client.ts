@@ -157,6 +157,17 @@ export class JioSaavnClient {
 		return data;
 	}
 
+	async getLyrics(lyricsId: string, signal?: AbortSignal): Promise<{ lyrics: string }> {
+		if (this._usesDirectWebApi()) {
+			return this._webGet<{ lyrics: string }>(
+				'lyrics.getLyrics',
+				{ lyrics_id: lyricsId },
+				{ signal }
+			);
+		}
+		return this._get<{ lyrics: string }>(`/api/lyrics/${lyricsId}`, {}, signal);
+	}
+
 	getAlbum(albumId: string, signal?: AbortSignal): Promise<JioSaavnAlbum> {
 		if (this._usesDirectWebApi()) {
 			return this._webGet<JioSaavnAlbum>('content.getAlbumDetails', { cc: 'in', albumid: albumId }, { signal }).then(

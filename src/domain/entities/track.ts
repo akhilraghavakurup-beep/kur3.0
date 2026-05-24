@@ -1,4 +1,4 @@
-﻿import type { ArtistReference } from './artist';
+import type { ArtistReference } from './artist';
 import type { AlbumReference } from './album';
 import type { TrackId } from '../value-objects/track-id';
 import type { Duration } from '../value-objects/duration';
@@ -16,6 +16,8 @@ export interface TrackMetadata {
 	readonly isrc?: string;
 	readonly explicit?: boolean;
 	readonly popularity?: number;
+	readonly hasLyrics?: boolean;
+	readonly lyricsId?: string | null;
 }
 
 export interface Track {
