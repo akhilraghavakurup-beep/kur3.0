@@ -113,6 +113,20 @@ const withAndroidAuto = (config) => {
 
 			fs.writeFileSync(path.join(resXmlDir, 'automotive_app_desc.xml'), automotiveAppDescContent);
 
+			// 5. Correct JitPack repository URL in root android/build.gradle (replace www.jitpack.io with jitpack.io)
+			const buildGradlePath = path.join(
+				config.modRequest.platformProjectRoot,
+				'build.gradle'
+			);
+
+			if (fs.existsSync(buildGradlePath)) {
+				let content = fs.readFileSync(buildGradlePath, 'utf8');
+				if (content.includes('https://www.jitpack.io')) {
+					content = content.replace(/https:\/\/www\.jitpack\.io/g, 'https://jitpack.io');
+					fs.writeFileSync(buildGradlePath, content, 'utf8');
+				}
+			}
+
 			return config;
 		},
 	]);
