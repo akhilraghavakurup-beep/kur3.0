@@ -34,7 +34,14 @@ interface DownloadState {
 	clearAll: () => void;
 	updateDownloadedTrackMetadata: (
 		trackId: string,
-		updates: { title?: string; artistName?: string; albumName?: string; artworkUrl?: string }
+		updates: {
+			title?: string;
+			artistName?: string;
+			albumName?: string;
+			artworkUrl?: string;
+			externalFilePath?: string;
+			externalDirectoryName?: string;
+		}
 	) => void;
 
 	isDownloaded: (trackId: string) => boolean;
@@ -162,7 +169,14 @@ export const useDownloadStore = create<DownloadState>()(
 
 			updateDownloadedTrackMetadata: (
 				trackId: string,
-				updates: { title?: string; artistName?: string; albumName?: string; artworkUrl?: string }
+				updates: {
+					title?: string;
+					artistName?: string;
+					albumName?: string;
+					artworkUrl?: string;
+					externalFilePath?: string;
+					externalDirectoryName?: string;
+				}
 			) => {
 				set((state) => {
 					const existing = state.downloadedTracks.get(trackId);
@@ -174,6 +188,12 @@ export const useDownloadStore = create<DownloadState>()(
 						...(updates.artistName !== undefined && { artistName: updates.artistName }),
 						...(updates.albumName !== undefined && { albumName: updates.albumName }),
 						...(updates.artworkUrl !== undefined && { artworkUrl: updates.artworkUrl }),
+						...(updates.externalFilePath !== undefined && {
+							externalFilePath: updates.externalFilePath,
+						}),
+						...(updates.externalDirectoryName !== undefined && {
+							externalDirectoryName: updates.externalDirectoryName,
+						}),
 					};
 
 					// Also keep downloads map in sync

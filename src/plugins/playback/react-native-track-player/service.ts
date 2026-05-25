@@ -1,14 +1,14 @@
-/**
- * React Native Track Player Playback Service
- *
- * This service handles remote control events (lock screen, notification, headphone buttons).
- * Must be registered after the app component with TrackPlayer.registerPlaybackService().
- */
-
 import TrackPlayer, { Event } from 'react-native-track-player';
 import { getLogger } from '@shared/services/logger';
 import { useHomeFeedStore } from '@/src/application/state/home-feed-store';
 import { getArtistNames } from '@/src/domain/entities/track';
+import { usePlayerStore } from '@/src/application/state/player-store';
+import { useLibraryStore } from '@/src/application/state/library-store';
+import { useHistoryStore } from '@/src/application/state/history-store';
+import { useDownloadStore } from '@/src/application/state/download-store';
+import { createTrackFromDownloadInfo } from '@/src/domain/utils/create-track-from-download';
+import { playbackService } from '@/src/application/services/playback-service';
+import type { Track } from '@/src/domain/entities/track';
 
 const logger = getLogger('RNTPPlaybackService');
 const MIN_SEEK_POSITION = 0;
@@ -20,7 +20,10 @@ interface AndroidAutoBrowseItem {
 	readonly subtitle: string;
 	readonly playable: boolean;
 	readonly browsable: boolean;
+	readonly iconUri?: string;
 }
+
+const browseTrackCache = new Map<string, Track>();
 
 export async function PlaybackService(): Promise<void> {
 	logger.debug('PlaybackService initializing - registering remote control handlers');
@@ -84,7 +87,7 @@ export async function PlaybackService(): Promise<void> {
 					},
 					{
 						id: 'library',
-						title: 'Library',
+						title: 'Your Library',
 						subtitle: 'Playlists and Favorites',
 						playable: false,
 						browsable: true,
@@ -103,6 +106,7 @@ export async function PlaybackService(): Promise<void> {
 					.flatMap((section) =>
 						section.items.flatMap((item): AndroidAutoBrowseItem[] => {
 							if (item.type === 'track') {
+								browseTrackCache.set(item.data.id.value, item.data);
 								return [
 									{
 										id: item.data.id.value,
@@ -110,6 +114,7 @@ export async function PlaybackService(): Promise<void> {
 										subtitle: getArtistNames(item.data),
 										playable: true,
 										browsable: false,
+										iconUri: item.data.artwork?.[0]?.url || '',
 									},
 								];
 							}
@@ -124,6 +129,7 @@ export async function PlaybackService(): Promise<void> {
 												.join(', ') || 'Album',
 										playable: true,
 										browsable: false,
+										iconUri: item.data.artwork?.[0]?.url || '',
 									},
 								];
 							}
@@ -147,10 +153,196 @@ export async function PlaybackService(): Promise<void> {
 						id: 'library_tracks',
 						title: 'Favorite Songs',
 						subtitle: 'Your liked music',
-						playable: true,
-						browsable: false,
+						playable: false,
+						browsable: true,
+					},
+					{
+						id: 'library_playlists',
+						title: 'Playlists',
+						subtitle: 'Your custom playlists',
+						playable: false,
+						browsable: true,
+					},
+					{
+						id: 'library_recent',
+						title: 'Recently Played',
+						subtitle: 'Recently played tracks',
+						playable: false,
+						browsable: true,
+					},
+					{
+						id: 'library_downloads',
+						title: 'Downloads',
+						subtitle: 'Offline tracks on this device',
+						playable: false,
+						browsable: true,
 					},
 				];
+			} else if (event.parentId === 'library_recent') {
+				const recentTracks = useHistoryStore.getState().getRecentTracks(30);
+				items = recentTracks.map((track) => {
+					browseTrackCache.set(track.id.value, track);
+					return {
+						id: track.id.value,
+						title: track.title,
+						subtitle: getArtistNames(track),
+						playable: true,
+						browsable: false,
+						iconUri: track.artwork?.[0]?.url || '',
+					};
+				});
+
+				if (items.length === 0) {
+					items.push({
+						id: 'empty_recent',
+						title: 'No recently played songs',
+						subtitle: 'Play songs in the app to show them here',
+						playable: false,
+						browsable: false,
+					});
+				}
+			} else if (event.parentId === 'library_downloads') {
+				const completedDownloads = Array.from(useDownloadStore.getState().downloads.values())
+					.filter((info) => info.status === 'completed');
+
+				items = completedDownloads.map((downloadInfo) => {
+					const track = createTrackFromDownloadInfo(downloadInfo);
+					browseTrackCache.set(track.id.value, track);
+					return {
+						id: track.id.value,
+						title: track.title,
+						subtitle: getArtistNames(track),
+						playable: true,
+						browsable: false,
+						iconUri: track.artwork?.[0]?.url || '',
+					};
+				});
+
+				if (items.length === 0) {
+					items.push({
+						id: 'empty_downloads',
+						title: 'No downloaded songs',
+						subtitle: 'Download songs in the app to play offline',
+						playable: false,
+						browsable: false,
+					});
+				}
+			} else if (event.parentId === 'library_tracks') {
+				const favorites = useLibraryStore.getState().getFavoriteTracks();
+				items = favorites.map((track) => {
+					browseTrackCache.set(track.id.value, track);
+					return {
+						id: track.id.value,
+						title: track.title,
+						subtitle: getArtistNames(track),
+						playable: true,
+						browsable: false,
+						iconUri: track.artwork?.[0]?.url || '',
+					};
+				});
+
+				if (items.length === 0) {
+					items.push({
+						id: 'empty_favorites',
+						title: 'No favorite songs',
+						subtitle: 'Like songs in the app to show them here',
+						playable: false,
+						browsable: false,
+					});
+				}
+			} else if (event.parentId === 'library_playlists') {
+				const playlists = useLibraryStore.getState().playlists;
+				items = playlists.map((playlist) => {
+					const firstTrackArtwork = playlist.tracks[0]?.track?.artwork?.[0]?.url;
+					return {
+						id: `playlist_tracks:${playlist.id}`,
+						title: playlist.name,
+						subtitle: `${playlist.tracks.length} song(s)`,
+						playable: false,
+						browsable: true,
+						iconUri: firstTrackArtwork || '',
+					};
+				});
+
+				if (items.length === 0) {
+					items.push({
+						id: 'empty_playlists',
+						title: 'No playlists found',
+						subtitle: 'Create playlists in the app',
+						playable: false,
+						browsable: false,
+					});
+				}
+			} else if (event.parentId.startsWith('playlist_tracks:')) {
+				const playlistId = event.parentId.slice('playlist_tracks:'.length);
+				const playlist = useLibraryStore.getState().playlists.find((p) => p.id === playlistId);
+				if (playlist) {
+					items = playlist.tracks.map((pt) => {
+						const track = pt.track;
+						browseTrackCache.set(track.id.value, track);
+						return {
+							id: track.id.value,
+							title: track.title,
+							subtitle: getArtistNames(track),
+							playable: true,
+							browsable: false,
+							iconUri: track.artwork?.[0]?.url || '',
+						};
+					});
+				}
+
+				if (items.length === 0) {
+					items.push({
+						id: 'empty_playlist_tracks',
+						title: 'Playlist is empty',
+						subtitle: 'Add songs to this playlist',
+						playable: false,
+						browsable: false,
+					});
+				}
+			} else if (event.parentId === 'queue') {
+				const appQueue = usePlayerStore.getState().queue;
+				const currentIndex = usePlayerStore.getState().queueIndex;
+				items = appQueue.map((track, i) => {
+					browseTrackCache.set(track.id.value, track);
+					const isCurrent = i === currentIndex;
+					return {
+						id: `${ANDROID_AUTO_TRACK_ID_PREFIX}${i}`,
+						title: track.title,
+						subtitle: `${isCurrent ? '▶ ' : ''}${getArtistNames(track)}`,
+						playable: true,
+						browsable: false,
+						iconUri: track.artwork?.[0]?.url || '',
+					};
+				});
+
+				if (items.length === 0) {
+					items.push({
+						id: 'empty_queue',
+						title: 'Queue is empty',
+						subtitle: 'Add songs to your queue',
+						playable: false,
+						browsable: false,
+					});
+				}
+			}
+
+			// Prepend Android Auto Mini Player if a song is active
+			const currentTrack = usePlayerStore.getState().currentTrack;
+			if (currentTrack && event.parentId !== 'queue') {
+				const isPlaying = usePlayerStore.getState().status === 'playing';
+				// Remove empty messages if we are adding a real item
+				if (items.length === 1 && items[0].id.startsWith('empty_')) {
+					items = [];
+				}
+				items.unshift({
+					id: 'android_auto_mini_player',
+					title: `${isPlaying ? '⏸ Now Playing: ' : '▶ Paused: '}${currentTrack.title}`,
+					subtitle: getArtistNames(currentTrack),
+					playable: true,
+					browsable: false,
+					iconUri: currentTrack.artwork?.[0]?.url || '',
+				});
 			}
 
 			// Send results back to native side
@@ -176,16 +368,43 @@ export async function PlaybackService(): Promise<void> {
 	// @ts-ignore - Custom event for Android Auto playback
 	TrackPlayer.addEventListener('remote-play-id', async (event: { mediaId: string }) => {
 		logger.debug(`RemotePlayId received: mediaId=${event.mediaId}`);
-		const queue = await TrackPlayer.getQueue();
-		const androidAutoIndex = event.mediaId.startsWith(ANDROID_AUTO_TRACK_ID_PREFIX)
-			? Number.parseInt(event.mediaId.slice(ANDROID_AUTO_TRACK_ID_PREFIX.length), 10)
-			: Number.NaN;
-		const index = Number.isInteger(androidAutoIndex)
-			? androidAutoIndex
-			: queue.findIndex((t) => t.id === event.mediaId);
-		if (index >= 0 && index < queue.length) {
-			await TrackPlayer.skip(index);
-			await TrackPlayer.play();
+		try {
+			if (event.mediaId === 'android_auto_mini_player') {
+				logger.debug('Mini player action received - toggling play/pause');
+				const state = usePlayerStore.getState();
+				if (state.status === 'playing') {
+					await playbackService.pause();
+				} else {
+					await playbackService.resume();
+				}
+				return;
+			}
+
+			const store = usePlayerStore.getState();
+			const appQueue = store.queue;
+
+			let index = -1;
+			if (event.mediaId.startsWith(ANDROID_AUTO_TRACK_ID_PREFIX)) {
+				index = Number.parseInt(event.mediaId.slice(ANDROID_AUTO_TRACK_ID_PREFIX.length), 10);
+			} else {
+				index = appQueue.findIndex((t) => t.id.value === event.mediaId);
+			}
+
+			if (index >= 0 && index < appQueue.length) {
+				logger.debug(`Playing from queue at index ${index}`);
+				playbackService.setQueue(appQueue, index);
+			} else {
+				// Not in active queue, check cache
+				const track = browseTrackCache.get(event.mediaId);
+				if (track) {
+					logger.debug(`Playing cached track: ${track.title}`);
+					playbackService.setQueue([track], 0);
+				} else {
+					logger.warn(`Track not found in queue or cache: ${event.mediaId}`);
+				}
+			}
+		} catch (err) {
+			logger.error('Error playing track in remote-play-id', err instanceof Error ? err : undefined);
 		}
 	});
 

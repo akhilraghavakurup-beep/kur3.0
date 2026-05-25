@@ -6,6 +6,10 @@ export type { NativeAudioMetadata, ExtractedArtwork };
 interface AudioMetadataModule {
 	extractMetadata(fileUri: string): Promise<NativeAudioMetadata>;
 	extractArtwork(fileUri: string): Promise<ExtractedArtwork | null>;
+	writeMetadata(
+		fileUri: string,
+		metadata: { title?: string; artist?: string; album?: string; artworkBase64?: string }
+	): Promise<void>;
 }
 
 const NativeModule: AudioMetadataModule | null =
@@ -31,6 +35,19 @@ export async function extractArtwork(fileUri: string): Promise<ExtractedArtwork 
 		throw new Error('AudioMetadata module is not available on web');
 	}
 	return NativeModule.extractArtwork(fileUri);
+}
+
+/**
+ * Writes audio metadata tags (Title, Artist, Album, Artwork) to the audio file natively.
+ */
+export async function writeMetadata(
+	fileUri: string,
+	metadata: { title?: string; artist?: string; album?: string; artworkBase64?: string }
+): Promise<void> {
+	if (!NativeModule) {
+		throw new Error('AudioMetadata module is not available on web');
+	}
+	return NativeModule.writeMetadata(fileUri, metadata);
 }
 
 /**

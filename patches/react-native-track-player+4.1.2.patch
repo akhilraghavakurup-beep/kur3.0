@@ -1676,6 +1676,7 @@ index afa6b0f..56ac10b 100644
 +                .setMediaId(it.getString("id"))
 +                .setTitle(it.getString("title"))
 +                .setSubtitle(it.getString("subtitle"))
++                .setIconUri(it.getString("iconUri")?.let { uriStr -> android.net.Uri.parse(uriStr) })
 +                .build()
 +            val flags = if (it.getBoolean("browsable", false)) MediaBrowserCompat.MediaItem.FLAG_BROWSABLE else MediaBrowserCompat.MediaItem.FLAG_PLAYABLE
 +            MediaBrowserCompat.MediaItem(description, flags)

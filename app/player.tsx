@@ -1,4 +1,4 @@
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Pressable } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Image } from 'expo-image';
 import { BlurView } from 'expo-blur';
@@ -21,7 +21,7 @@ import Animated, {
 	withTiming,
 } from 'react-native-reanimated';
 import { Icon } from '@/src/components/ui/icon';
-import { ChevronLeftIcon, DownloadIcon, CheckIcon, LoaderCircleIcon, ListMusic } from 'lucide-react-native';
+import { ChevronLeftIcon, DownloadIcon, CheckIcon, LoaderCircleIcon, ListMusic, Mic } from 'lucide-react-native';
 
 const thumbUpRegular = require('@/assets/animation/system-regular-124-thumb-up-hover-thumb-up.json') as AnimationObject;
 const thumbUpSolid = require('@/assets/animation/system-solid-124-thumb-up-hover-thumb-up.json') as AnimationObject;
@@ -254,6 +254,18 @@ function PlayerScreenContent() {
 							<IconButton
 								icon={() => (
 									<Icon
+										as={Mic}
+										size={20}
+										color={showLyrics ? colors.primary : colors.onSurfaceVariant}
+									/>
+								)}
+								onPress={() => usePlayerUIStore.getState().toggleShowLyrics()}
+								size={20}
+								accessibilityLabel={'Toggle lyrics'}
+							/>
+							<IconButton
+								icon={() => (
+									<Icon
 										as={ListMusic}
 										size={20}
 										color={colors.onSurfaceVariant}
@@ -276,7 +288,8 @@ function PlayerScreenContent() {
 						{showLyrics ? (
 							<LyricsDisplay />
 						) : (
-							<View
+							<Pressable
+								onPress={() => usePlayerUIStore.getState().toggleShowLyrics()}
 								style={[
 									styles.artworkWrapper,
 									artworkLoaded && styles.artworkShadow,
@@ -301,7 +314,7 @@ function PlayerScreenContent() {
 										]}
 									/>
 								)}
-							</View>
+							</Pressable>
 						)}
 					</Animated.View>
 
