@@ -36,14 +36,12 @@ android {
 
 repositories {
     mavenCentral()
-    maven { url 'https://jitpack.io' }
 }
 
 dependencies {
     implementation project(':expo-modules-core')
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:${getKotlinVersion()}"
     implementation "androidx.documentfile:documentfile:1.0.1"
-    implementation 'com.github.nodece:jaudiotagger:3.0.1'
 }
 
 def safeExtGet(prop, fallback) {

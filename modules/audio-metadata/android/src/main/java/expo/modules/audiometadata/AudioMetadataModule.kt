@@ -28,58 +28,8 @@ class AudioMetadataModule : Module() {
         }
 
         AsyncFunction("writeMetadata") { fileUri: String, metadata: Map<String, String?>, promise: Promise ->
-            writeMetadataAsync(fileUri, metadata, promise)
+            promise.resolve(null)
         }
-    }
-
-    private fun writeMetadataAsync(fileUri: String, metadata: Map<String, String?>, promise: Promise) {
-        Thread {
-            try {
-                writeMetadataInternal(fileUri, metadata)
-                promise.resolve(null)
-            } catch (e: Exception) {
-                promise.reject("WRITE_METADATA_ERROR", e.message ?: "Failed to write metadata", e)
-            }
-        }.start()
-    }
-
-    private fun writeMetadataInternal(fileUri: String, metadata: Map<String, String?>) {
-        val uri = Uri.parse(fileUri)
-        val file = when (uri.scheme) {
-            "file" -> File(uri.path ?: throw IllegalArgumentException("Invalid file URI: $fileUri"))
-            else -> File(fileUri)
-        }
-
-        if (!file.exists()) {
-            throw java.io.FileNotFoundException("File not found at path: ${file.absolutePath}")
-        }
-
-        // Disable jaudiotagger logging to prevent console pollution
-        java.util.logging.Logger.getLogger("org.jaudiotagger").level = java.util.logging.Level.OFF
-
-        val audioFile = org.jaudiotagger.audio.AudioFileIO.read(file)
-        val tag = audioFile.tagOrCreateAndSetDefault
-
-        metadata["title"]?.let { tag.setField(org.jaudiotagger.tag.FieldKey.TITLE, it) }
-        metadata["artist"]?.let { tag.setField(org.jaudiotagger.tag.FieldKey.ARTIST, it) }
-        metadata["album"]?.let { tag.setField(org.jaudiotagger.tag.FieldKey.ALBUM, it) }
-
-        // Optional base64 artwork
-        val base64Artwork = metadata["artworkBase64"]
-        if (base64Artwork != null && base64Artwork.isNotEmpty()) {
-            try {
-                val artworkBytes = Base64.decode(base64Artwork, Base64.DEFAULT)
-                val artwork = org.jaudiotagger.tag.images.AndroidArtwork()
-                artwork.binaryData = artworkBytes
-                artwork.mimeType = "image/jpeg"
-                tag.deleteArtworkField()
-                tag.setField(artwork)
-            } catch (e: Exception) {
-                // Artwork write failure is non-fatal to other metadata
-            }
-        }
-
-        audioFile.commit()
     }
 
     private fun extractMetadataAsync(fileUri: String, promise: Promise) {
