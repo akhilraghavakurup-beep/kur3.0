@@ -1375,7 +1375,7 @@ index b2409a0..04e6802 100644
      }
  }
 diff --git a/node_modules/react-native-track-player/android/src/main/java/com/doublesymmetry/trackplayer/service/MusicService.kt b/node_modules/react-native-track-player/android/src/main/java/com/doublesymmetry/trackplayer/service/MusicService.kt
-index afa6b0f..56ac10b 100644
+index afa6b0f..0978178 100644
 --- a/node_modules/react-native-track-player/android/src/main/java/com/doublesymmetry/trackplayer/service/MusicService.kt
 +++ b/node_modules/react-native-track-player/android/src/main/java/com/doublesymmetry/trackplayer/service/MusicService.kt
 @@ -10,6 +10,11 @@ import android.os.Build
@@ -1622,7 +1622,7 @@ index afa6b0f..56ac10b 100644
              ?.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
              ?.emit(event, data?.let { Arguments.fromBundle(it) })
      }
-@@ -751,62 +896,176 @@ class MusicService : HeadlessJsTaskService() {
+@@ -751,62 +896,177 @@ class MusicService : HeadlessJsTaskService() {
          val payload = Arguments.createArray()
          data.forEach { payload.pushMap(Arguments.fromBundle(it)) }
  
@@ -1833,7 +1833,7 @@ index afa6b0f..56ac10b 100644
      inner class MusicBinder : Binder() {
          val service = this@MusicService
      }
-@@ -825,6 +1084,13 @@ class MusicService : HeadlessJsTaskService() {
+@@ -825,6 +1085,13 @@ class MusicService : HeadlessJsTaskService() {
  
          const val TASK_KEY = "TrackPlayer"
  
@@ -1847,7 +1847,7 @@ index afa6b0f..56ac10b 100644
          const val MIN_BUFFER_KEY = "minBuffer"
          const val MAX_BUFFER_KEY = "maxBuffer"
          const val PLAY_BUFFER_KEY = "playBuffer"
-@@ -852,3 +1118,5 @@ class MusicService : HeadlessJsTaskService() {
+@@ -852,3 +1119,5 @@ class MusicService : HeadlessJsTaskService() {
          const val DEFAULT_STOP_FOREGROUND_GRACE_PERIOD = 5
      }
  }
