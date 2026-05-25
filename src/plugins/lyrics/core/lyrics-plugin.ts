@@ -19,7 +19,6 @@ import { LyricsOrchestrator } from '../services/lyrics-orchestrator';
 import { LyricsCache } from '../services/lyrics-cache';
 import { getLyricsActions, executeLyricsAction } from '../actions/lyrics-actions';
 import { createLrcLibProvider } from '../providers/lrclib';
-import { createJioSaavnProvider } from '../providers/jiosaavn/jiosaavn-provider';
 import {
 	PLUGIN_MANIFEST,
 	HANDLED_ACTION_IDS,
@@ -57,10 +56,6 @@ export class LyricsPlugin extends AbstractBasePlugin implements Omit<ActionsProv
 	}
 
 	private _registerBuiltInProviders(): void {
-		const jioSaavnProvider = createJioSaavnProvider({ priority: 5 });
-		this._orchestrator?.registerProvider(jioSaavnProvider);
-		this.logger.debug('Registered built-in JioSaavn provider');
-
 		const lrcLibProvider = createLrcLibProvider({ priority: 10 });
 		this._orchestrator?.registerProvider(lrcLibProvider);
 		this.logger.debug('Registered built-in LRCLib provider');

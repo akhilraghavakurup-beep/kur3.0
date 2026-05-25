@@ -128,14 +128,14 @@ export async function PlaybackService(): Promise<void> {
 							if (item.type === 'album') {
 								return [
 									{
-										id: item.data.id.value,
+										id: `album_tracks:${item.data.id.value}`,
 										title: item.data.name,
 										subtitle:
 											item.data.artists
 												.map((artist) => artist.name)
 												.join(', ') || 'Album',
-										playable: true,
-										browsable: false,
+										playable: false,
+										browsable: true,
 										iconUri: item.data.artwork?.[0]?.url || '',
 									},
 								];
@@ -306,6 +306,33 @@ export async function PlaybackService(): Promise<void> {
 						id: 'empty_playlist_tracks',
 						title: 'Playlist is empty',
 						subtitle: 'Add songs to this playlist',
+						playable: false,
+						browsable: false,
+					});
+				}
+			} else if (event.parentId.startsWith('album_tracks:')) {
+				const albumId = event.parentId.slice('album_tracks:'.length);
+				const { albumService } = await import('@/src/application/services/album-service');
+				const albumResult = await albumService.getAlbumDetail(albumId);
+				if (albumResult.success && albumResult.data) {
+					items = albumResult.data.tracks.map((track) => {
+						browseTrackCache.set(track.id.value, track);
+						return {
+							id: track.id.value,
+							title: track.title,
+							subtitle: getArtistNames(track),
+							playable: true,
+							browsable: false,
+							iconUri: track.artwork?.[0]?.url || '',
+						};
+					});
+				}
+
+				if (items.length === 0) {
+					items.push({
+						id: 'empty_album_tracks',
+						title: 'Album is empty',
+						subtitle: 'No tracks found',
 						playable: false,
 						browsable: false,
 					});

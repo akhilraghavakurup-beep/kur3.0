@@ -21,6 +21,8 @@ import { getLogger } from '@shared/services/logger';
 import type { PlaybackState } from './playback-state';
 import type { ProgressTracker } from './progress-tracker';
 import { mapRNTPStateToStatus } from './event-mapper';
+import { usePlayerStore } from '@/src/application/state/player-store';
+import { playbackService } from '@/src/application/services/playback-service';
 
 const logger = getLogger('RNTPEventHandler');
 
@@ -126,11 +128,29 @@ export class EventHandler {
 	}
 
 	private _onTrackChanged(event: PlaybackActiveTrackChangedEvent): void {
+		if (this._state.isTransitioning) {
+			logger.debug('Ignoring native track change event during active transition');
+			return;
+		}
+
 		if (event.track) {
 			const track = this._state.trackMap.get(event.track.id);
 			if (track && track !== this._state.currentTrack) {
-				this._state.currentTrack = track;
-				this.emitEvent({ type: 'track-change', track, timestamp: Date.now() });
+				logger.debug(`Native track transition detected: ${track.title}`);
+
+				// Find track in the store queue
+				const store = usePlayerStore.getState();
+				const index = store.queue.findIndex((t) => t.id.value === track.id.value);
+
+				if (index >= 0) {
+					logger.debug(`Found track in queue at index ${index}. Triggering play...`);
+					setTimeout(() => {
+						playbackService.setQueue(store.queue, index);
+					}, 0);
+				} else {
+					this._state.currentTrack = track;
+					this.emitEvent({ type: 'track-change', track, timestamp: Date.now() });
+				}
 			}
 		}
 	}

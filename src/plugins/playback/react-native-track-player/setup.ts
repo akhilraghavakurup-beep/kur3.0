@@ -40,15 +40,7 @@ async function _waitForForeground(): Promise<void> {
 	if (Platform.OS !== 'android') return;
 	if (AppState.currentState === 'active') return;
 
-	logger.info('Waiting for app to be in foreground...');
-	return new Promise((resolve) => {
-		const subscription = AppState.addEventListener('change', (state) => {
-			if (state === 'active') {
-				subscription.remove();
-				resolve();
-			}
-		});
-	});
+	logger.info('App is in background mode, attempting setup directly...');
 }
 
 /**

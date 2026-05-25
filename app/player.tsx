@@ -42,7 +42,6 @@ import { useIsDownloaded, useIsDownloading } from '@/src/application/state/downl
 import { useDownloadActions } from '@/src/hooks/use-download-actions';
 import { usePlayerActions } from '@/src/hooks/use-player';
 import { usePreferredStreamQuality, useSettingsStore } from '@/src/application/state/settings-store';
-import { useArtworkColors } from '@/src/hooks/use-artwork-colors';
 import { LinearGradient } from 'expo-linear-gradient';
 
 const BLUR_INTENSITY = 120;
@@ -68,52 +67,7 @@ function replaceColorsInSource(source: AnimationObject, color: string): Animatio
 	return JSON.parse(replaced) as AnimationObject;
 }
 
-function AmbientGlowBackdrop({ dominant, secondary }: { dominant: string; secondary: string }) {
-	const [currentColors, setCurrentColors] = useState({ dominant, secondary });
-	const [prevColors, setPrevColors] = useState<{ dominant: string; secondary: string } | null>(null);
-	const fade = useSharedValue(0);
 
-	useEffect(() => {
-		if (dominant !== currentColors.dominant || secondary !== currentColors.secondary) {
-			setPrevColors(currentColors);
-			setCurrentColors({ dominant, secondary });
-			fade.value = 0;
-			fade.value = withTiming(1, { duration: 1000 });
-		}
-	}, [dominant, secondary]);
-
-	const animatedStyle = useAnimatedStyle(() => ({
-		opacity: fade.value,
-	}));
-
-	return (
-		<View style={StyleSheet.absoluteFill}>
-			<View style={[StyleSheet.absoluteFill, { backgroundColor: '#121212' }]} />
-			{prevColors && (
-				<LinearGradient
-					colors={[`${prevColors.dominant}66`, `${prevColors.secondary}22`, '#121212']}
-					start={{ x: 0, y: 0 }}
-					end={{ x: 1, y: 1 }}
-					style={StyleSheet.absoluteFill}
-				/>
-			)}
-			<Animated.View style={[StyleSheet.absoluteFill, animatedStyle]}>
-				<LinearGradient
-					colors={[`${currentColors.dominant}66`, `${currentColors.secondary}22`, '#121212']}
-					start={{ x: 0, y: 0 }}
-					end={{ x: 1, y: 1 }}
-					style={StyleSheet.absoluteFill}
-				/>
-			</Animated.View>
-			<BlurView
-				intensity={BLUR_INTENSITY}
-				experimentalBlurMethod={'dimezisBlurView'}
-				style={StyleSheet.absoluteFill}
-				tint={'dark'}
-			/>
-		</View>
-	);
-}
 
 export default function PlayerScreen() {
 	const currentTrack = useCurrentTrack();
@@ -135,9 +89,6 @@ function PlayerScreenContent() {
 	const { colors, backgroundStyle, dominantColor } = usePlayerTheme();
 	const showLyrics = useShowLyrics();
 	const openQueueSheet = usePlayerUIStore((s) => s.openQueueSheet);
-	const experimentalBackdropGlow = useSettingsStore(
-		(state) => state.experimentalBackdropGlow
-	);
 	const [artworkLoaded, setArtworkLoaded] = useState(false);
 	const { skipToNext, skipToPrevious } = usePlayerActions();
 
@@ -180,9 +131,6 @@ function PlayerScreenContent() {
 
 	const artwork = currentTrack ? getLargestArtwork(currentTrack.artwork) : undefined;
 	const artworkUrl = artwork?.url;
-	const artworkColors = useArtworkColors(artworkUrl);
-	const dominant = artworkColors.dominant ?? colors.primary;
-	const secondary = artworkColors.secondary ?? colors.secondary;
 
 	useEffect(() => {
 		if (!currentTrack && pathname === '/player') {
@@ -232,11 +180,7 @@ function PlayerScreenContent() {
 		<GestureDetector gesture={swipeGesture}>
 			<View style={[styles.container, { backgroundColor: appColors.background }]}>
 				<StatusBar style={statusBarStyle} />
-				{experimentalBackdropGlow ? (
-					<AmbientGlowBackdrop dominant={dominant} secondary={secondary} />
-				) : (
-					renderBackground(backgroundStyle, artworkUrl, appColors.background, dominantColor)
-				)}
+				{renderBackground(backgroundStyle, artworkUrl, appColors.background, dominantColor)}
 
 				<SafeAreaView style={styles.safeArea}>
 					<View style={styles.content}>
@@ -343,13 +287,15 @@ function PlayerScreenContent() {
 								>
 									{albumName ? `${artistNames} \u2022 ${albumName}` : artistNames}
 								</Text>
-								<Text
-									variant={'labelMedium'}
-									numberOfLines={1}
-									style={{ color: colors.onSurfaceVariant }}
-								>
-									{getQualityLabel(preferredStreamQuality)}
-								</Text>
+								<View style={[styles.qualityBadge, { borderColor: `${colors.onSurfaceVariant}4D` }]}>
+									<Text
+										variant={'labelSmall'}
+										numberOfLines={1}
+										style={[styles.qualityBadgeText, { color: colors.onSurfaceVariant }]}
+									>
+										{getQualityLabel(preferredStreamQuality).toUpperCase()}
+									</Text>
+								</View>
 							</Animated.View>
 						</View>
 						<Animated.View
@@ -459,21 +405,23 @@ function renderBackground(
 		);
 	}
 
-	// artwork-blur (default)
-	if (!artworkUrl) return null;
+	// Dynamic Spotify-style Gradient Background (Default & Premium)
+	const topColor = dominantColor ?? '#1c1f26';
+	const bottomColor = '#0b0c0f';
 
 	return (
 		<View style={StyleSheet.absoluteFill}>
-			<Image
-				source={{ uri: artworkUrl }}
+			{artworkUrl ? (
+				<Image
+					source={{ uri: artworkUrl }}
+					style={[StyleSheet.absoluteFill, { opacity: 0.12 }]}
+					contentFit={'cover'}
+				/>
+			) : null}
+			<LinearGradient
+				colors={[topColor, bottomColor]}
+				locations={[0, 0.75]}
 				style={StyleSheet.absoluteFill}
-				contentFit={'cover'}
-			/>
-			<BlurView
-				intensity={BLUR_INTENSITY}
-				experimentalBlurMethod={'dimezisBlurView'}
-				style={StyleSheet.absoluteFill}
-				tint={'dark'}
 			/>
 		</View>
 	);
@@ -553,5 +501,18 @@ const styles = StyleSheet.create({
 	favoriteIcon: {
 		width: 32,
 		height: 32,
+	},
+	qualityBadge: {
+		alignSelf: 'flex-start',
+		borderWidth: 1,
+		borderRadius: 6,
+		paddingHorizontal: 6,
+		paddingVertical: 1,
+		marginTop: 6,
+	},
+	qualityBadgeText: {
+		fontSize: 10,
+		fontWeight: '700',
+		letterSpacing: 1.2,
 	},
 });

@@ -140,16 +140,7 @@ interface SettingsState {
 	musicDownloadDirectoryName: string | null;
 	customDownloadDirectoryUri: string | null;
 	customDownloadDirectoryName: string | null;
-	experimentalBackdropGlow: boolean;
-	experimentalHapticProgress: boolean;
-	experimentalJioSaavnLyrics: boolean;
-	experimentalCrossfade: boolean;
-
 	setThemePreference: (preference: ThemePreference) => void;
-	setExperimentalBackdropGlow: (enabled: boolean) => void;
-	setExperimentalHapticProgress: (enabled: boolean) => void;
-	setExperimentalJioSaavnLyrics: (enabled: boolean) => void;
-	setExperimentalCrossfade: (enabled: boolean) => void;
 	setDefaultTab: (tab: DefaultTab) => void;
 	setHomeContentPreferences: (
 		preferences: readonly unknown[]
@@ -270,10 +261,6 @@ export const useSettingsStore = create<SettingsState>()(
 			musicDownloadDirectoryName: null,
 			customDownloadDirectoryUri: null,
 			customDownloadDirectoryName: null,
-			experimentalBackdropGlow: false,
-			experimentalHapticProgress: false,
-			experimentalJioSaavnLyrics: false,
-			experimentalCrossfade: false,
 
 			setThemePreference: (preference: ThemePreference) => {
 				set({ themePreference: preference });
@@ -389,18 +376,6 @@ export const useSettingsStore = create<SettingsState>()(
 			setAutoplaySimilarOnQueueEnd: (enabled: boolean) => {
 				set({ autoplaySimilarOnQueueEnd: enabled });
 			},
-			setExperimentalBackdropGlow: (enabled: boolean) => {
-				set({ experimentalBackdropGlow: enabled });
-			},
-			setExperimentalHapticProgress: (enabled: boolean) => {
-				set({ experimentalHapticProgress: enabled });
-			},
-			setExperimentalJioSaavnLyrics: (enabled: boolean) => {
-				set({ experimentalJioSaavnLyrics: enabled });
-			},
-			setExperimentalCrossfade: (enabled: boolean) => {
-				set({ experimentalCrossfade: enabled });
-			},
 			setDownloadLocationMode: (mode: DownloadLocationMode) => {
 				set({ downloadLocationMode: mode });
 			},
@@ -448,10 +423,6 @@ export const useSettingsStore = create<SettingsState>()(
 					musicDownloadDirectoryName: null,
 					customDownloadDirectoryUri: null,
 					customDownloadDirectoryName: null,
-					experimentalBackdropGlow: false,
-					experimentalHapticProgress: false,
-					experimentalJioSaavnLyrics: false,
-					experimentalCrossfade: false,
 				});
 				await syncNativeLanguageCookie(defaults);
 			},
@@ -601,18 +572,6 @@ export const useCustomDownloadDirectoryUri = () =>
 
 export const useCustomDownloadDirectoryName = () =>
 	useSettingsStore((state) => state.customDownloadDirectoryName);
-
-export const useExperimentalBackdropGlow = () =>
-	useSettingsStore((state) => state.experimentalBackdropGlow);
-
-export const useExperimentalHapticProgress = () =>
-	useSettingsStore((state) => state.experimentalHapticProgress);
-
-export const useExperimentalJioSaavnLyrics = () =>
-	useSettingsStore((state) => state.experimentalJioSaavnLyrics);
-
-export const useExperimentalCrossfade = () =>
-	useSettingsStore((state) => state.experimentalCrossfade);
 
 export function waitForSettingsHydration(): Promise<void> {
 	return hydrationPromise;

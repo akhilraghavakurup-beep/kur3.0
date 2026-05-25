@@ -22,6 +22,8 @@ import {
 	SKIP_PREVIOUS_THRESHOLD_SECONDS,
 } from './constants';
 
+import { usePlayerStore } from '@/src/application/state/player-store';
+
 const logger = getLogger('PlaybackOperations');
 
 export class PlaybackOperations {
@@ -47,19 +49,50 @@ export class PlaybackOperations {
 
 		return this._lock.withLock(async () => {
 			try {
-				logger.debug('Acquired lock, resetting player...');
+				logger.debug('Acquired lock, synchronizing native queue...');
 
 				this._state.isTransitioning = true;
-				await TrackPlayer.reset();
-				this._state.isTransitioning = false;
-				logger.debug('Player reset complete');
 
+				// 1. Map active track with real URL
 				const rntpTrack = mapToRNTPTrack(track, streamUrl, headers);
 				this._state.trackMap.set(rntpTrack.id, track);
-				logger.debug('Adding track to player...');
 
-				await TrackPlayer.add(rntpTrack);
-				logger.debug('Track added successfully');
+				// 2. Map subsequent tracks with placeholder URLs
+				const store = usePlayerStore.getState();
+				const appQueue = store.queue;
+				const currentIndex = store.queueIndex;
+				const rntpTracksToAdd = [rntpTrack];
+
+				if (currentIndex >= 0 && currentIndex < appQueue.length) {
+					const subsequentTracks = appQueue.slice(currentIndex + 1);
+					subsequentTracks.forEach((t) => {
+						const dummyUrl = 'https://placeholder.com/dummy.mp3';
+						const mapped = mapToRNTPTrack(t, dummyUrl);
+						this._state.trackMap.set(mapped.id, t);
+						rntpTracksToAdd.push(mapped);
+					});
+				}
+
+				logger.debug(`Adding ${rntpTracksToAdd.length} tracks to native player...`);
+				await TrackPlayer.add(rntpTracksToAdd);
+
+				// 3. Find the native index of the newly added active track
+				const nativeQueue = await TrackPlayer.getQueue();
+				const activeTrackNativeIndex = nativeQueue.length - rntpTracksToAdd.length;
+
+				// 4. Skip natively to the new active track
+				logger.debug(`Skipping natively to index ${activeTrackNativeIndex}`);
+				await TrackPlayer.skip(activeTrackNativeIndex);
+
+				// 5. Remove all old tracks (everything before the new active track)
+				if (activeTrackNativeIndex > 0) {
+					logger.debug(`Removing ${activeTrackNativeIndex} old tracks from native player`);
+					const oldIndices = Array.from({ length: activeTrackNativeIndex }, (_, i) => i);
+					await TrackPlayer.remove(oldIndices);
+				}
+
+				this._state.isTransitioning = false;
+				logger.debug('Native queue synchronization complete');
 
 				this._state.currentTrack = track;
 				this._state.position = Duration.ZERO;
