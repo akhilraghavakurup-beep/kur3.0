@@ -34,6 +34,7 @@ export class PlaybackService {
 	private eventListener: PlaybackEventListener | null = null;
 	private playLock: Promise<void> = Promise.resolve();
 	private readonly _streamCache = new Map<string, CachedStream>();
+	private _userVolume = 1.0;
 
 	constructor() {
 		this.setupEventListener();
@@ -135,6 +136,14 @@ export class PlaybackService {
 	private _preBufferNextTrackRef = '';
 	private _fadeInterval: NodeJS.Timeout | null = null;
 
+	private async _setFadeVolume(volume: number): Promise<Result<void, Error>> {
+		if (!this.activeProvider) {
+			return err(new Error('No playback provider available'));
+		}
+		usePlayerStore.getState().setVolume(volume);
+		return this.activeProvider.setVolume(volume);
+	}
+
 	async fadeVolume(target: number, durationMs = 1000): Promise<void> {
 		if (this._fadeInterval) {
 			clearInterval(this._fadeInterval);
@@ -151,7 +160,7 @@ export class PlaybackService {
 			this._fadeInterval = setInterval(async () => {
 				currentStep++;
 				const nextVol = Math.max(0, Math.min(1, startVol + volStep * currentStep));
-				await this.setVolume(nextVol);
+				await this._setFadeVolume(nextVol);
 
 				if (currentStep >= steps) {
 					if (this._fadeInterval) {
@@ -312,7 +321,11 @@ export class PlaybackService {
 		const endedTrack = state.currentTrack;
 
 		if (settings.experimentalCrossfade && endedTrack && this.activeProvider) {
-			const originalVolume = state.volume;
+			if (this._fadeInterval) {
+				clearInterval(this._fadeInterval);
+				this._fadeInterval = null;
+			}
+			const originalVolume = this._userVolume;
 			await this.fadeVolume(0, 1000);
 
 			state.skipToNext();
@@ -329,11 +342,11 @@ export class PlaybackService {
 
 			if (currentTrack) {
 				const result = await this.play(currentTrack);
-				await this.setVolume(0);
+				await this._setFadeVolume(0);
 				void this.fadeVolume(originalVolume, 1000);
 				return result;
 			} else {
-				await this.setVolume(originalVolume);
+				await this._setFadeVolume(originalVolume);
 				return ok(undefined);
 			}
 		}
@@ -390,6 +403,7 @@ export class PlaybackService {
 	}
 
 	async setVolume(volume: number): Promise<Result<void, Error>> {
+		this._userVolume = volume;
 		if (!this.activeProvider) {
 			return err(new Error('No playback provider available'));
 		}

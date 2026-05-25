@@ -21,6 +21,8 @@ interface AndroidAutoBrowseItem {
 	readonly playable: boolean;
 	readonly browsable: boolean;
 	readonly iconUri?: string;
+	readonly gridBrowsable?: boolean;
+	readonly gridPlayable?: boolean;
 }
 
 const browseTrackCache = new Map<string, Track>();
@@ -44,13 +46,13 @@ export async function PlaybackService(): Promise<void> {
 	});
 
 	TrackPlayer.addEventListener(Event.RemoteNext, () => {
-		logger.debug('RemoteNext received (service)');
-		// Skip handled by main app event handler - uses app queue instead of native queue
+		logger.debug('RemoteNext received (service) - skipping next');
+		void playbackService.skipToNext();
 	});
 
 	TrackPlayer.addEventListener(Event.RemotePrevious, () => {
-		logger.debug('RemotePrevious received (service)');
-		// Skip handled by main app event handler - uses app queue instead of native queue
+		logger.debug('RemotePrevious received (service) - skipping previous');
+		void playbackService.skipToPrevious();
 	});
 
 	TrackPlayer.addEventListener(Event.RemoteSeek, (event) => {
@@ -75,6 +77,9 @@ export async function PlaybackService(): Promise<void> {
 		logger.debug(`RemoteBrowse received: parentId=${event.parentId}`);
 
 		try {
+			const { ensureBootstrapped } = await import('@/src/application/bootstrap');
+			await ensureBootstrapped();
+
 			let items: AndroidAutoBrowseItem[] = [];
 			if (event.parentId === 'root') {
 				items = [
@@ -84,6 +89,8 @@ export async function PlaybackService(): Promise<void> {
 						subtitle: 'Personalized for you',
 						playable: false,
 						browsable: true,
+						gridBrowsable: true,
+						gridPlayable: true,
 					},
 					{
 						id: 'library',
@@ -155,6 +162,7 @@ export async function PlaybackService(): Promise<void> {
 						subtitle: 'Your liked music',
 						playable: false,
 						browsable: true,
+						gridPlayable: true,
 					},
 					{
 						id: 'library_playlists',
@@ -169,6 +177,7 @@ export async function PlaybackService(): Promise<void> {
 						subtitle: 'Recently played tracks',
 						playable: false,
 						browsable: true,
+						gridPlayable: true,
 					},
 					{
 						id: 'library_downloads',
@@ -176,6 +185,7 @@ export async function PlaybackService(): Promise<void> {
 						subtitle: 'Offline tracks on this device',
 						playable: false,
 						browsable: true,
+						gridPlayable: true,
 					},
 				];
 			} else if (event.parentId === 'library_recent') {
@@ -369,6 +379,9 @@ export async function PlaybackService(): Promise<void> {
 	TrackPlayer.addEventListener('remote-play-id', async (event: { mediaId: string }) => {
 		logger.debug(`RemotePlayId received: mediaId=${event.mediaId}`);
 		try {
+			const { ensureBootstrapped } = await import('@/src/application/bootstrap');
+			await ensureBootstrapped();
+
 			if (event.mediaId === 'android_auto_mini_player') {
 				logger.debug('Mini player action received - toggling play/pause');
 				const state = usePlayerStore.getState();

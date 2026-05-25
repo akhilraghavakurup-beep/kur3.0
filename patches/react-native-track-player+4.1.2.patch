@@ -1375,7 +1375,7 @@ index b2409a0..04e6802 100644
      }
  }
 diff --git a/node_modules/react-native-track-player/android/src/main/java/com/doublesymmetry/trackplayer/service/MusicService.kt b/node_modules/react-native-track-player/android/src/main/java/com/doublesymmetry/trackplayer/service/MusicService.kt
-index afa6b0f..0978178 100644
+index afa6b0f..155e02b 100644
 --- a/node_modules/react-native-track-player/android/src/main/java/com/doublesymmetry/trackplayer/service/MusicService.kt
 +++ b/node_modules/react-native-track-player/android/src/main/java/com/doublesymmetry/trackplayer/service/MusicService.kt
 @@ -10,6 +10,11 @@ import android.os.Build
@@ -1622,7 +1622,7 @@ index afa6b0f..0978178 100644
              ?.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
              ?.emit(event, data?.let { Arguments.fromBundle(it) })
      }
-@@ -751,62 +896,177 @@ class MusicService : HeadlessJsTaskService() {
+@@ -751,62 +896,187 @@ class MusicService : HeadlessJsTaskService() {
          val payload = Arguments.createArray()
          data.forEach { payload.pushMap(Arguments.fromBundle(it)) }
  
@@ -1672,11 +1672,21 @@ index afa6b0f..0978178 100644
 +    fun sendBrowseResult(parentId: String, items: List<Bundle>) {
 +        val result = browseResults.remove(parentId) ?: return
 +        val mediaItems = items.map {
++            val extras = Bundle()
++            if (it.containsKey("gridBrowsable") && it.getBoolean("gridBrowsable")) {
++                extras.putInt("android.media.browse.CONTENT_STYLE_BROWSABLE_HINT", 2)
++                extras.putInt("android.media.extras.CONTENT_STYLE_BROWSABLE_HINT", 2)
++            }
++            if (it.containsKey("gridPlayable") && it.getBoolean("gridPlayable")) {
++                extras.putInt("android.media.browse.CONTENT_STYLE_PLAYABLE_HINT", 2)
++                extras.putInt("android.media.extras.CONTENT_STYLE_PLAYABLE_HINT", 2)
++            }
 +            val description = MediaDescriptionCompat.Builder()
 +                .setMediaId(it.getString("id"))
 +                .setTitle(it.getString("title"))
 +                .setSubtitle(it.getString("subtitle"))
 +                .setIconUri(it.getString("iconUri")?.let { uriStr -> android.net.Uri.parse(uriStr) })
++                .setExtras(extras)
 +                .build()
 +            val flags = if (it.getBoolean("browsable", false)) MediaBrowserCompat.MediaItem.FLAG_BROWSABLE else MediaBrowserCompat.MediaItem.FLAG_PLAYABLE
 +            MediaBrowserCompat.MediaItem(description, flags)
@@ -1833,7 +1843,7 @@ index afa6b0f..0978178 100644
      inner class MusicBinder : Binder() {
          val service = this@MusicService
      }
-@@ -825,6 +1085,13 @@ class MusicService : HeadlessJsTaskService() {
+@@ -825,6 +1095,13 @@ class MusicService : HeadlessJsTaskService() {
  
          const val TASK_KEY = "TrackPlayer"
  
@@ -1847,7 +1857,7 @@ index afa6b0f..0978178 100644
          const val MIN_BUFFER_KEY = "minBuffer"
          const val MAX_BUFFER_KEY = "maxBuffer"
          const val PLAY_BUFFER_KEY = "playBuffer"
-@@ -852,3 +1119,5 @@ class MusicService : HeadlessJsTaskService() {
+@@ -852,3 +1129,5 @@ class MusicService : HeadlessJsTaskService() {
          const val DEFAULT_STOP_FOREGROUND_GRACE_PERIOD = 5
      }
  }
