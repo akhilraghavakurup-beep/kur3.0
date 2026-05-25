@@ -135,7 +135,7 @@ export class EventHandler {
 
 		if (event.track) {
 			const track = this._state.trackMap.get(event.track.id);
-			if (track && track !== this._state.currentTrack) {
+			if (track && track.id.value !== this._state.currentTrack?.id.value) {
 				logger.debug(`Native track transition detected: ${track.title}`);
 
 				// Find track in the store queue

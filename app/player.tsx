@@ -32,7 +32,7 @@ import { LyricsDisplay } from '@/src/components/player/lyrics-display';
 import { PlayerThemeProvider, usePlayerTheme } from '@/src/components/player/player-theme-context';
 import { useLyrics } from '@/src/hooks/use-lyrics';
 import { getLargestArtwork } from '@/src/domain/value-objects/artwork';
-import { getArtistNames } from '@/src/domain/entities/track';
+import { getArtistNames, getSourceDisplayName } from '@/src/domain/entities/track';
 import { getQualityLabel } from '@/src/domain/value-objects/audio-source';
 import { useAppTheme } from '@/lib/theme';
 import { useShowLyrics, usePlayerUIStore } from '@/src/application/state/player-ui-store';
@@ -109,6 +109,17 @@ function PlayerScreenContent() {
 		),
 		[isFavorite, colors.primary, colors.onSurfaceVariant]
 	);
+
+	const artworkShadowStyle = useMemo(() => {
+		const shadowColor = dominantColor ?? '#000';
+		return {
+			shadowColor,
+			shadowOffset: { width: 0, height: 20 },
+			shadowOpacity: 0.45,
+			shadowRadius: 36,
+			elevation: 28,
+		};
+	}, [dominantColor]);
 
 	const handleToggleFavorite = useCallback(() => {
 		const store = useLibraryStore.getState();
@@ -236,7 +247,7 @@ function PlayerScreenContent() {
 								onPress={() => usePlayerUIStore.getState().toggleShowLyrics()}
 								style={[
 									styles.artworkWrapper,
-									artworkLoaded && styles.artworkShadow,
+									artworkLoaded && artworkShadowStyle,
 								]}
 							>
 								{artworkUrl ? (
@@ -274,27 +285,48 @@ function PlayerScreenContent() {
 								exiting={FadeOut.duration(160)}
 							>
 								<Text
-									variant={'headlineSmall'}
-									numberOfLines={2}
-									style={{ color: colors.onSurface, fontWeight: '700' }}
+									numberOfLines={1}
+									ellipsizeMode="tail"
+									style={{
+										color: colors.onSurface,
+										fontSize: 26,
+										fontWeight: '800',
+										letterSpacing: -0.5,
+										marginBottom: 4,
+									}}
 								>
 									{currentTrack.title}
 								</Text>
 								<Text
-									variant={'titleMedium'}
 									numberOfLines={1}
-									style={{ color: colors.onSurfaceVariant }}
+									style={{
+										color: colors.onSurfaceVariant,
+										fontSize: 16,
+										fontWeight: '600',
+										opacity: 0.8,
+									}}
 								>
 									{albumName ? `${artistNames} \u2022 ${albumName}` : artistNames}
 								</Text>
-								<View style={[styles.qualityBadge, { borderColor: `${colors.onSurfaceVariant}4D` }]}>
-									<Text
-										variant={'labelSmall'}
-										numberOfLines={1}
-										style={[styles.qualityBadgeText, { color: colors.onSurfaceVariant }]}
-									>
-										{getQualityLabel(preferredStreamQuality).toUpperCase()}
-									</Text>
+								<View style={styles.badgeRow}>
+									<View style={[styles.qualityBadge, { borderColor: `${colors.onSurfaceVariant}4D` }]}>
+										<Text
+											variant={'labelSmall'}
+											numberOfLines={1}
+											style={[styles.qualityBadgeText, { color: colors.onSurfaceVariant }]}
+										>
+											{getQualityLabel(preferredStreamQuality).toUpperCase()}
+										</Text>
+									</View>
+									<View style={[styles.sourceBadge, { backgroundColor: `${colors.primary}1F`, borderColor: `${colors.primary}4D` }]}>
+										<Text
+											variant={'labelSmall'}
+											numberOfLines={1}
+											style={[styles.sourceBadgeText, { color: colors.primary }]}
+										>
+											{getSourceDisplayName(currentTrack).toUpperCase()}
+										</Text>
+									</View>
 								</View>
 							</Animated.View>
 						</View>
@@ -364,13 +396,11 @@ function PlayerScreenContent() {
 					)}
 
 					<Animated.View
-						entering={FadeInUp.duration(300).delay(220)}
-						style={styles.progressContainer}
+						entering={FadeInUp.duration(320).delay(220)}
+						style={styles.controlsCard}
 					>
 						<ProgressBar seekable={true} />
-					</Animated.View>
-
-					<Animated.View entering={FadeInUp.duration(320).delay(280)}>
+						<View style={{ height: 16 }} />
 						<PlayerControls size={'lg'} />
 					</Animated.View>
 					</View>
@@ -444,7 +474,7 @@ const styles = StyleSheet.create({
 		flexDirection: 'row',
 		justifyContent: 'space-between',
 		alignItems: 'center',
-		marginBottom: 32,
+		marginBottom: 16,
 	},
 	artworkContainer: {
 		flex: 1,
@@ -452,7 +482,10 @@ const styles = StyleSheet.create({
 		justifyContent: 'center',
 	},
 	artworkWrapper: {
-		borderRadius: 16,
+		borderRadius: 24,
+		overflow: 'hidden',
+		borderWidth: 1,
+		borderColor: 'rgba(255, 255, 255, 0.08)',
 	},
 	artworkShadow: {
 		shadowColor: '#000',
@@ -464,7 +497,7 @@ const styles = StyleSheet.create({
 	artwork: {
 		width: '100%',
 		aspectRatio: 1,
-		borderRadius: 16,
+		borderRadius: 24,
 	},
 	artworkPlaceholder: {
 		justifyContent: 'center',
@@ -474,8 +507,8 @@ const styles = StyleSheet.create({
 		flexDirection: 'row',
 		alignItems: 'center',
 		gap: 8,
-		marginTop: 32,
-		marginBottom: 24,
+		marginTop: 16,
+		marginBottom: 12,
 	},
 	trackInfoText: {
 		flex: 1,
@@ -503,16 +536,39 @@ const styles = StyleSheet.create({
 		height: 32,
 	},
 	qualityBadge: {
-		alignSelf: 'flex-start',
 		borderWidth: 1,
 		borderRadius: 6,
-		paddingHorizontal: 6,
-		paddingVertical: 1,
-		marginTop: 6,
+		paddingHorizontal: 8,
+		paddingVertical: 2,
 	},
 	qualityBadgeText: {
 		fontSize: 10,
 		fontWeight: '700',
 		letterSpacing: 1.2,
+	},
+	badgeRow: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		gap: 8,
+		marginTop: 8,
+	},
+	sourceBadge: {
+		borderWidth: 1,
+		borderRadius: 6,
+		paddingHorizontal: 8,
+		paddingVertical: 2,
+	},
+	sourceBadgeText: {
+		fontSize: 10,
+		fontWeight: '700',
+		letterSpacing: 1.2,
+	},
+	controlsCard: {
+		backgroundColor: 'rgba(255, 255, 255, 0.03)',
+		borderColor: 'rgba(255, 255, 255, 0.06)',
+		borderWidth: 1,
+		borderRadius: 28,
+		padding: 24,
+		marginTop: 16,
 	},
 });

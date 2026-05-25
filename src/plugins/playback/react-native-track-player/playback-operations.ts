@@ -49,9 +49,11 @@ export class PlaybackOperations {
 
 		return this._lock.withLock(async () => {
 			try {
-				logger.debug('Acquired lock, synchronizing native queue...');
+				logger.debug('Acquired lock, resetting player...');
 
 				this._state.isTransitioning = true;
+				await TrackPlayer.reset();
+				logger.debug('Player reset complete');
 
 				// 1. Map active track with real URL
 				const rntpTrack = mapToRNTPTrack(track, streamUrl, headers);
@@ -75,24 +77,9 @@ export class PlaybackOperations {
 
 				logger.debug(`Adding ${rntpTracksToAdd.length} tracks to native player...`);
 				await TrackPlayer.add(rntpTracksToAdd);
-
-				// 3. Find the native index of the newly added active track
-				const nativeQueue = await TrackPlayer.getQueue();
-				const activeTrackNativeIndex = nativeQueue.length - rntpTracksToAdd.length;
-
-				// 4. Skip natively to the new active track
-				logger.debug(`Skipping natively to index ${activeTrackNativeIndex}`);
-				await TrackPlayer.skip(activeTrackNativeIndex);
-
-				// 5. Remove all old tracks (everything before the new active track)
-				if (activeTrackNativeIndex > 0) {
-					logger.debug(`Removing ${activeTrackNativeIndex} old tracks from native player`);
-					const oldIndices = Array.from({ length: activeTrackNativeIndex }, (_, i) => i);
-					await TrackPlayer.remove(oldIndices);
-				}
+				logger.debug('Tracks added successfully');
 
 				this._state.isTransitioning = false;
-				logger.debug('Native queue synchronization complete');
 
 				this._state.currentTrack = track;
 				this._state.position = Duration.ZERO;
