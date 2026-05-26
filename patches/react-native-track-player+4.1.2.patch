@@ -453,7 +453,7 @@ index b2409a0..04e6802 100644
      }
  }
 diff --git a/node_modules/react-native-track-player/android/src/main/java/com/doublesymmetry/trackplayer/service/MusicService.kt b/node_modules/react-native-track-player/android/src/main/java/com/doublesymmetry/trackplayer/service/MusicService.kt
-index afa6b0f..4683cff 100644
+index afa6b0f..bd17800 100644
 --- a/node_modules/react-native-track-player/android/src/main/java/com/doublesymmetry/trackplayer/service/MusicService.kt
 +++ b/node_modules/react-native-track-player/android/src/main/java/com/doublesymmetry/trackplayer/service/MusicService.kt
 @@ -10,6 +10,11 @@ import android.os.Build
@@ -468,17 +468,26 @@ index afa6b0f..4683cff 100644
  import androidx.annotation.MainThread
  import androidx.core.app.NotificationCompat
  import androidx.core.app.NotificationCompat.PRIORITY_LOW
-@@ -30,6 +35,7 @@ import com.doublesymmetry.trackplayer.module.MusicEvents.Companion.METADATA_PAYL
+@@ -30,22 +35,91 @@ import com.doublesymmetry.trackplayer.module.MusicEvents.Companion.METADATA_PAYL
  import com.doublesymmetry.trackplayer.utils.BundleUtils
  import com.doublesymmetry.trackplayer.utils.BundleUtils.setRating
  import com.facebook.react.HeadlessJsTaskService
 +import com.facebook.react.ReactApplication
++import com.facebook.react.ReactHost
++import com.facebook.react.ReactInstanceEventListener
++import com.facebook.react.bridge.ReactContext
  import com.facebook.react.bridge.Arguments
++import com.facebook.react.bridge.UiThreadUtil
++import com.facebook.react.internal.featureflags.ReactNativeNewArchitectureFeatureFlags
  import com.facebook.react.jstasks.HeadlessJsTaskConfig
++import com.facebook.react.jstasks.HeadlessJsTaskContext
++import com.facebook.react.jstasks.HeadlessJsTaskEventListener
  import com.facebook.react.modules.core.DeviceEventManagerModule
-@@ -38,14 +44,59 @@ import kotlinx.coroutines.*
+ import com.google.android.exoplayer2.ui.R as ExoPlayerR
+ import kotlinx.coroutines.*
  import kotlinx.coroutines.flow.flow
  import java.util.concurrent.TimeUnit
++import java.util.concurrent.CopyOnWriteArraySet
  import kotlin.system.exitProcess
 +import android.support.v4.media.session.PlaybackStateCompat
 +import androidx.media.MediaBrowserServiceCompat
@@ -486,16 +495,28 @@ index afa6b0f..4683cff 100644
  
  @MainThread
 -class MusicService : HeadlessJsTaskService() {
-+class MusicService : MediaBrowserServiceCompat() {
++class MusicService : MediaBrowserServiceCompat(), HeadlessJsTaskEventListener {
      private lateinit var player: QueuedAudioPlayer
      private val binder = MusicBinder()
      private val scope = MainScope()
      private var progressUpdateJob: Job? = null
 +    private val browseResults = mutableMapOf<String, Result<MutableList<MediaBrowserCompat.MediaItem>>>()
-+    private var mActiveTasks = mutableSetOf<Int>()
++    private val activeTasks: MutableSet<Int> = CopyOnWriteArraySet()
++    private var headlessTaskRequested = false
 +
 +    private val reactNativeHost
 +        get() = (application as ReactApplication).reactNativeHost
++
++    private val reactHost: ReactHost?
++        get() = (application as ReactApplication).reactHost
++
++    private val reactContext: ReactContext?
++        get() {
++            if (ReactNativeNewArchitectureFeatureFlags.enableBridgelessArchitecture()) {
++                return reactHost?.currentReactContext
++            }
++            return reactNativeHost.reactInstanceManager.currentReactContext
++        }
 +
 +    private val receiver = object : android.content.BroadcastReceiver() {
 +        override fun onReceive(context: android.content.Context, intent: android.content.Intent) {
@@ -528,6 +549,9 @@ index afa6b0f..4683cff 100644
 +    override fun onDestroy() {
 +        super.onDestroy()
 +        unregisterReceiver(receiver)
++        reactContext?.let { context ->
++            HeadlessJsTaskContext.getInstance(context).removeTaskEventListener(this)
++        }
 +        if (::player.isInitialized) {
 +            player.destroy()
 +        }
@@ -537,7 +561,7 @@ index afa6b0f..4683cff 100644
  
      /**
       * Use [appKilledPlaybackBehavior] instead.
-@@ -94,7 +145,10 @@ class MusicService : HeadlessJsTaskService() {
+@@ -94,7 +168,10 @@ class MusicService : HeadlessJsTaskService() {
      private var compactCapabilities: List<Capability> = emptyList()
  
      override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -549,7 +573,7 @@ index afa6b0f..4683cff 100644
          startAndStopEmptyNotificationToAvoidANR()
          return START_STICKY
      }
-@@ -157,6 +211,83 @@ class MusicService : HeadlessJsTaskService() {
+@@ -157,6 +234,83 @@ class MusicService : HeadlessJsTaskService() {
          val automaticallyUpdateNotificationMetadata = playerOptions?.getBoolean(AUTO_UPDATE_METADATA, true) ?: true
  
          player = QueuedAudioPlayer(this@MusicService, playerConfig, bufferConfig, cacheConfig)
@@ -633,7 +657,7 @@ index afa6b0f..4683cff 100644
          player.automaticallyUpdateNotificationMetadata = automaticallyUpdateNotificationMetadata
          observeEvents()
          setupForegrounding()
-@@ -292,22 +423,26 @@ class MusicService : HeadlessJsTaskService() {
+@@ -292,22 +446,26 @@ class MusicService : HeadlessJsTaskService() {
      fun add(tracks: List<Track>) {
          val items = tracks.map { it.toAudioItem() }
          player.add(items)
@@ -660,7 +684,7 @@ index afa6b0f..4683cff 100644
      }
  
      @MainThread
-@@ -318,11 +453,13 @@ class MusicService : HeadlessJsTaskService() {
+@@ -318,11 +476,13 @@ class MusicService : HeadlessJsTaskService() {
      @MainThread
      fun remove(indexes: List<Int>) {
          player.remove(indexes)
@@ -674,7 +698,7 @@ index afa6b0f..4683cff 100644
      }
  
      @MainThread
-@@ -353,6 +490,7 @@ class MusicService : HeadlessJsTaskService() {
+@@ -353,6 +513,7 @@ class MusicService : HeadlessJsTaskService() {
      @MainThread
      fun skip(index: Int) {
          player.jumpToItem(index)
@@ -682,37 +706,66 @@ index afa6b0f..4683cff 100644
      }
  
      @MainThread
-@@ -739,9 +877,21 @@ class MusicService : HeadlessJsTaskService() {
+@@ -739,11 +900,32 @@ class MusicService : HeadlessJsTaskService() {
          return bundle
      }
  
-+    private fun resolveReactContext(): com.facebook.react.bridge.ReactContext? {
-+        // Try application's ReactNativeHost first
-+        val app = application
-+        if (app is ReactApplication) {
-+            val appContext = app.reactNativeHost.reactInstanceManager.currentReactContext
-+            if (appContext != null) return appContext
-+        }
++    private fun resolveReactContext(): ReactContext? {
++        return reactContext ?: com.doublesymmetry.trackplayer.module.MusicModule.getReactContext()
++    }
 +
-+        // Fallback: get from MusicModule's stored context (New Architecture support)
-+        return com.doublesymmetry.trackplayer.module.MusicModule.getReactContext()
++    @MainThread
++    private fun emitToReactContext(context: ReactContext, event: String, data: Bundle? = null) {
++        context
++            .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
++            .emit(event, data?.let { Arguments.fromBundle(it) })
 +    }
 +
      @MainThread
      private fun emit(event: String, data: Bundle? = null) {
 -        reactNativeHost.reactInstanceManager.currentReactContext
-+        resolveReactContext()
-             ?.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
-             ?.emit(event, data?.let { Arguments.fromBundle(it) })
+-            ?.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
+-            ?.emit(event, data?.let { Arguments.fromBundle(it) })
++        val context = resolveReactContext()
++        if (context != null) {
++            emitToReactContext(context, event, data)
++            return
++        }
++
++        ensureHeadlessJsTask()
++        runWhenReactContextReady { readyContext ->
++            scope.launch {
++                delay(REACT_EVENT_REPLAY_DELAY_MS)
++                emitToReactContext(readyContext, event, data)
++            }
++        }
      }
-@@ -751,62 +901,215 @@ class MusicService : HeadlessJsTaskService() {
+ 
+     @MainThread
+@@ -751,62 +933,328 @@ class MusicService : HeadlessJsTaskService() {
          val payload = Arguments.createArray()
          data.forEach { payload.pushMap(Arguments.fromBundle(it)) }
  
 -        reactNativeHost.reactInstanceManager.currentReactContext
-+        resolveReactContext()
-             ?.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
-             ?.emit(event, payload)
+-            ?.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
+-            ?.emit(event, payload)
++        val context = resolveReactContext()
++        if (context != null) {
++            context
++                .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
++                .emit(event, payload)
++            return
++        }
++
++        ensureHeadlessJsTask()
++        runWhenReactContextReady { readyContext ->
++            scope.launch {
++                delay(REACT_EVENT_REPLAY_DELAY_MS)
++                readyContext
++                    .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
++                    .emit(event, payload)
++            }
++        }
      }
  
 -    override fun getTaskConfig(intent: Intent?): HeadlessJsTaskConfig {
@@ -724,8 +777,13 @@ index afa6b0f..4683cff 100644
 +        return binder
 +    }
 +
-+        fun onHeadlessJsTaskFinish(taskId: Int) {
-+        // This is empty so ReactNative doesn't kill this service
++    override fun onHeadlessJsTaskStart(taskId: Int) {
++        // No-op. The media browser service owns its own lifetime.
++    }
++
++    override fun onHeadlessJsTaskFinish(taskId: Int) {
++        activeTasks.remove(taskId)
++        // Keep the media browser service alive while Android Auto is connected.
 +    }
 +
 +        fun getTaskConfig(intent: Intent?): HeadlessJsTaskConfig? {
@@ -766,6 +824,7 @@ index afa6b0f..4683cff 100644
 -                player.clear()
 -                player.stop()
 +    override fun onGetRoot(clientPackageName: String, clientUid: Int, rootHints: Bundle?): BrowserRoot? {
++        ensureHeadlessJsTask()
 +        return BrowserRoot("root", null)
 +    }
  
@@ -776,17 +835,16 @@ index afa6b0f..4683cff 100644
 -                    stopForeground(true)
 -                }
 +    override fun onLoadChildren(parentId: String, result: Result<MutableList<MediaBrowserCompat.MediaItem>>) {
++        ensureHeadlessJsTask()
 +        result.detach()
 +        browseResults[parentId] = result
 +        val bundle = Bundle()
 +        bundle.putString("parentId", parentId)
 +        emit("remote-browse", bundle)
-+        if (parentId == ROOT_ID || parentId == QUEUE_ID) {
-+            scope.launch {
-+                delay(BROWSE_RESULT_TIMEOUT_MS)
-+                val pendingResult = browseResults.remove(parentId) ?: return@launch
-+                pendingResult.sendResult(buildAndroidAutoBrowseItems(parentId))
-+            }
++        scope.launch {
++            delay(BROWSE_RESULT_TIMEOUT_MS)
++            val pendingResult = browseResults.remove(parentId) ?: return@launch
++            pendingResult.sendResult(buildAndroidAutoBrowseItems(parentId))
 +        }
 +    }
  
@@ -799,12 +857,12 @@ index afa6b0f..4683cff 100644
 +            if (it.containsKey("gridBrowsable") && it.getBoolean("gridBrowsable")) {
 +                extras.putInt("android.media.browse.CONTENT_STYLE_BROWSABLE_HINT", 2)
 +                extras.putInt("android.media.extras.CONTENT_STYLE_BROWSABLE_HINT", 2)
-             }
--            else -> {}
++            }
 +            if (it.containsKey("gridPlayable") && it.getBoolean("gridPlayable")) {
 +                extras.putInt("android.media.browse.CONTENT_STYLE_PLAYABLE_HINT", 2)
 +                extras.putInt("android.media.extras.CONTENT_STYLE_PLAYABLE_HINT", 2)
-+            }
+             }
+-            else -> {}
 +            val description = MediaDescriptionCompat.Builder()
 +                .setMediaId(it.getString("id"))
 +                .setTitle(it.getString("title"))
@@ -822,7 +880,7 @@ index afa6b0f..4683cff 100644
 +        return when (parentId) {
 +            ROOT_ID -> buildAndroidAutoRootItems()
 +            QUEUE_ID -> buildAndroidAutoQueueItems()
-+            else -> mutableListOf()
++            else -> buildAndroidAutoUnavailableItems()
          }
      }
  
@@ -887,6 +945,17 @@ index afa6b0f..4683cff 100644
 +        return queue.mapIndexed { index, track -> androidAutoTrackItem(index, track) }.toMutableList()
 +    }
 +
++    private fun buildAndroidAutoUnavailableItems(): MutableList<MediaBrowserCompat.MediaItem> {
++        return mutableListOf(
++            androidAutoMediaItem(
++                OPEN_APP_ID,
++                "Open Kur Music",
++                "Start the app on your phone to load this section",
++                browsable = true
++            )
++        )
++    }
++
 +    private fun safeAndroidAutoTracks(): List<Track> {
 +        return if (::player.isInitialized) tracks else emptyList()
 +    }
@@ -940,19 +1009,102 @@ index afa6b0f..4683cff 100644
 +        notifyChildrenChanged(QUEUE_ID)
 +    }
 +
-+    protected fun startTask(taskConfig: HeadlessJsTaskConfig) {
-+        val reactContext = resolveReactContext()
-+        if (reactContext == null) return
-+        val headlessJsTaskContext = com.facebook.react.jstasks.HeadlessJsTaskContext.getInstance(reactContext)
++    private fun ensureHeadlessJsTask() {
++        if (headlessTaskRequested && resolveReactContext() != null) return
++        val taskConfig = getTaskConfig(null) ?: return
++        startTask(taskConfig)
++    }
++
++    private fun startTask(taskConfig: HeadlessJsTaskConfig) {
++        if (headlessTaskRequested && resolveReactContext() != null) return
++        headlessTaskRequested = true
++
++        UiThreadUtil.runOnUiThread {
++            val context = resolveReactContext()
++            if (context == null) {
++                createReactContextAndScheduleTask(taskConfig)
++            } else {
++                invokeStartTask(context, taskConfig)
++            }
++        }
++    }
++
++    private fun invokeStartTask(context: ReactContext, taskConfig: HeadlessJsTaskConfig) {
++        val headlessJsTaskContext = HeadlessJsTaskContext.getInstance(context)
++        headlessJsTaskContext.addTaskEventListener(this)
 +        val taskId = headlessJsTaskContext.startTask(taskConfig)
-+        mActiveTasks.add(taskId)
++        activeTasks.add(taskId)
++    }
++
++    private fun createReactContextAndScheduleTask(taskConfig: HeadlessJsTaskConfig) {
++        if (ReactNativeNewArchitectureFeatureFlags.enableBridgelessArchitecture()) {
++            val host = reactHost ?: return
++            host.addReactInstanceEventListener(
++                object : ReactInstanceEventListener {
++                    override fun onReactContextInitialized(context: ReactContext) {
++                        invokeStartTask(context, taskConfig)
++                        host.removeReactInstanceEventListener(this)
++                    }
++                }
++            )
++            host.start()
++            return
++        }
++
++        val manager = reactNativeHost.reactInstanceManager
++        manager.addReactInstanceEventListener(
++            object : ReactInstanceEventListener {
++                override fun onReactContextInitialized(context: ReactContext) {
++                    invokeStartTask(context, taskConfig)
++                    manager.removeReactInstanceEventListener(this)
++                }
++            }
++        )
++        manager.createReactContextInBackground()
++    }
++
++    private fun runWhenReactContextReady(action: (ReactContext) -> Unit) {
++        val context = resolveReactContext()
++        if (context != null) {
++            action(context)
++            return
++        }
++
++        if (ReactNativeNewArchitectureFeatureFlags.enableBridgelessArchitecture()) {
++            val host = reactHost ?: return
++            host.addReactInstanceEventListener(
++                object : ReactInstanceEventListener {
++                    override fun onReactContextInitialized(context: ReactContext) {
++                        action(context)
++                        host.removeReactInstanceEventListener(this)
++                    }
++                }
++            )
++            if (!headlessTaskRequested) {
++                host.start()
++            }
++            return
++        }
++
++        val manager = reactNativeHost.reactInstanceManager
++        manager.addReactInstanceEventListener(
++            object : ReactInstanceEventListener {
++                override fun onReactContextInitialized(context: ReactContext) {
++                    action(context)
++                    manager.removeReactInstanceEventListener(this)
++                }
++            }
++        )
++        if (!headlessTaskRequested) {
++            manager.createReactContextInBackground()
++        }
      }
  
 -    @MainThread
      inner class MusicBinder : Binder() {
          val service = this@MusicService
      }
-@@ -825,6 +1128,14 @@ class MusicService : HeadlessJsTaskService() {
+@@ -825,6 +1273,15 @@ class MusicService : HeadlessJsTaskService() {
  
          const val TASK_KEY = "TrackPlayer"
  
@@ -962,7 +1114,8 @@ index afa6b0f..4683cff 100644
 +        const val EMPTY_QUEUE_ID = "android_auto_empty_queue"
 +        const val TRACK_ID_PREFIX = "android_auto_native_track:"
 +        const val ROOT_TRACK_PREVIEW_LIMIT = 6
-+        const val BROWSE_RESULT_TIMEOUT_MS = 1200L
++        const val BROWSE_RESULT_TIMEOUT_MS = 5000L
++        const val REACT_EVENT_REPLAY_DELAY_MS = 350L
 +
          const val MIN_BUFFER_KEY = "minBuffer"
          const val MAX_BUFFER_KEY = "maxBuffer"
