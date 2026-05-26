@@ -139,8 +139,19 @@ export class PlaybackService {
 			playbackTimer.start(track.title);
 			usePlayerStore.getState().play(track);
 
+			// Find and set transitioning = true on the react-native-track-player provider early
+			const rntpProvider = this.playbackProviders.find(
+				(p) => p.manifest.id === 'react-native-track-player'
+			);
+			if (rntpProvider && rntpProvider.setTransitioning) {
+				rntpProvider.setTransitioning(true);
+			}
+
 			const streamResult = await this._resolveStreamForTrack(track);
 			if (!streamResult.success) {
+				if (rntpProvider && rntpProvider.setTransitioning) {
+					rntpProvider.setTransitioning(false);
+				}
 				return this._handlePlayError(streamResult.error, track);
 			}
 
@@ -149,15 +160,17 @@ export class PlaybackService {
 	}
 
 	/**
-	 * Stops the active provider and resolves the audio stream in parallel
-	 * to reduce latency when switching tracks.
+	 * Resolves the audio stream first before stopping the active provider
+	 * to prevent Android Auto timeouts and gapless/smooth track changes.
 	 */
 	private async _resolveStreamForTrack(track: Track): Promise<Result<AudioStream, Error>> {
-		playbackTimer.beginPhase('stop+resolve');
+		playbackTimer.beginPhase('resolve+stop');
 
-		const stopPromise = this._stopActiveProvider();
-		const streamPromise = this._getAudioStream(track);
-		const [, streamResult] = await Promise.all([stopPromise, streamPromise]);
+		// 1. Resolve stream URL first (takes 1-3 seconds)
+		const streamResult = await this._getAudioStream(track);
+
+		// 2. Stop/Reset the active provider only after the stream is ready
+		await this._stopActiveProvider();
 
 		playbackTimer.endPhase();
 		return streamResult;
@@ -214,6 +227,15 @@ export class PlaybackService {
 
 	private _handlePlayError(error: Error, track: Track): Result<void, Error> {
 		playbackTimer.cancel();
+
+		// Reset transitioning to false on the RNTP provider if needed
+		const rntpProvider = this.playbackProviders.find(
+			(p) => p.manifest.id === 'react-native-track-player'
+		);
+		if (rntpProvider && rntpProvider.setTransitioning) {
+			rntpProvider.setTransitioning(false);
+		}
+
 		usePlayerStore.getState()._setError(error.message);
 		this._streamCache.clear();
 		logger.warn(`Playback failed for: ${track.title} — ${error.message}`);
@@ -261,22 +283,31 @@ export class PlaybackService {
 	async skipToNext(): Promise<Result<void, Error>> {
 		const state = usePlayerStore.getState();
 		const endedTrack = state.currentTrack;
+		const isLastTrack = state.queueIndex === state.queue.length - 1;
+
+		if (isLastTrack && state.repeatMode === 'off') {
+			// Queue ended! Try autoplay recommendations
+			if (endedTrack && useSettingsStore.getState().autoplaySimilarOnQueueEnd) {
+				const autoAppend = await this.appendRecommendationsFromTrack(endedTrack, 15);
+				if (autoAppend.success && autoAppend.data > 0) {
+					// We successfully appended recommendations, so we can now skip to the next!
+					state.skipToNext();
+					const newTrack = usePlayerStore.getState().currentTrack;
+					if (newTrack) {
+						return this.play(newTrack);
+					}
+				}
+			}
+			// If autoplay is off or recommendations failed, gracefully pause and seek to 0,
+			// keeping the current track loaded in a paused/idle state.
+			await this.pause();
+			await this.seekTo(Duration.ZERO);
+			return ok(undefined);
+		}
 
 		state.skipToNext();
 
-		let currentTrack = usePlayerStore.getState().currentTrack;
-		if (!currentTrack && endedTrack && useSettingsStore.getState().autoplaySimilarOnQueueEnd) {
-			const autoAppend = await this.appendRecommendationsFromTrack(endedTrack, 15);
-			if (autoAppend.success && autoAppend.data > 0) {
-				const refreshed = usePlayerStore.getState();
-				refreshed.skipToNext();
-				currentTrack = usePlayerStore.getState().currentTrack;
-				logger.debug(
-					`Autoplay appended ${autoAppend.data} similar track(s) after queue ended`
-				);
-			}
-		}
-
+		const currentTrack = usePlayerStore.getState().currentTrack;
 		if (currentTrack) {
 			return this.play(currentTrack);
 		}
@@ -565,13 +596,8 @@ export class PlaybackService {
 				store._setDuration(event.duration);
 				break;
 			case 'ended':
-			case 'remote-skip-next':
 				logger.debug(`${event.type} received - calling skipToNext`);
 				setTimeout(() => this.skipToNext(), 0);
-				break;
-			case 'remote-skip-previous':
-				logger.debug('Remote skip previous - calling skipToPrevious');
-				setTimeout(() => this.skipToPrevious(), 0);
 				break;
 			case 'error':
 				this._handlePlaybackErrorEvent(event, store);

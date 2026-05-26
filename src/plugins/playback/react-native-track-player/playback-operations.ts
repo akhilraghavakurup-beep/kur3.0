@@ -51,6 +51,7 @@ export class PlaybackOperations {
 			try {
 				logger.debug('Acquired lock, resetting player...');
 
+				this._state.currentTrack = track;
 				this._state.isTransitioning = true;
 				await TrackPlayer.reset();
 				logger.debug('Player reset complete');
@@ -79,9 +80,6 @@ export class PlaybackOperations {
 				await TrackPlayer.add(rntpTracksToAdd);
 				logger.debug('Tracks added successfully');
 
-				this._state.isTransitioning = false;
-
-				this._state.currentTrack = track;
 				this._state.position = Duration.ZERO;
 				this._state.duration = track.duration;
 				this._updateStatus('loading');
@@ -93,6 +91,8 @@ export class PlaybackOperations {
 				logger.debug('Calling TrackPlayer.play()...');
 				await TrackPlayer.play();
 				logger.debug('TrackPlayer.play() returned');
+
+				this._state.isTransitioning = false;
 
 				this._updateStatus('playing');
 				this._emitEvent({ type: 'track-change', track, timestamp: Date.now() });

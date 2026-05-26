@@ -181,6 +181,14 @@ export class RNTPPlaybackProvider implements PlaybackProvider {
 
 	isShuffle = (): boolean => this._state.isShuffled;
 
+	get isTransitioning(): boolean {
+		return this._state.isTransitioning;
+	}
+
+	setTransitioning(transitioning: boolean): void {
+		this._state.isTransitioning = transitioning;
+	}
+
 	addEventListener = (listener: PlaybackEventListener): (() => void) =>
 		this._eventHandler.addEventListener(listener);
 

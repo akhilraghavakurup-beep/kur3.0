@@ -142,6 +142,10 @@ export interface PlaybackProvider extends BasePlugin {
 	preloadTrack?(track: Track, streamUrl: string): AsyncResult<void, Error>;
 
 	hasCapability(capability: PlaybackCapability): boolean;
+
+	readonly isTransitioning?: boolean;
+
+	setTransitioning?(transitioning: boolean): void;
 }
 
 export function isPlaybackProvider(plugin: BasePlugin): plugin is PlaybackProvider {

@@ -163,6 +163,11 @@ export class EventHandler {
 	}
 
 	private _onQueueEnded(): void {
+		if (this._state.isTransitioning) {
+			logger.debug('Ignoring native queue ended event during active transition');
+			return;
+		}
+
 		if (this._state.repeatMode !== 'all') {
 			this.emitEvent({ type: 'ended', timestamp: Date.now() });
 		}

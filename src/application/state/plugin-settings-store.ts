@@ -17,12 +17,17 @@ export const DEFAULT_ENABLED_PLUGINS: string[] = [
 	'jiosaavn',
 	'react-native-track-player',
 	'core-library',
+	'local-library',
 ];
 
 /**
  * Core plugins that cannot be disabled
  */
-export const REQUIRED_PLUGINS: string[] = ['react-native-track-player', 'core-library'];
+export const REQUIRED_PLUGINS: string[] = [
+	'react-native-track-player',
+	'core-library',
+	'local-library',
+];
 
 const EMPTY_CONFIG: PluginConfig = Object.freeze({} as PluginConfig);
 

@@ -44,7 +44,7 @@ export const QueueTrackItem = memo(function QueueTrackItem({
 	];
 
 	return (
-		<RNTouchableOpacity style={containerStyle} onPress={handlePlay} activeOpacity={0.7}>
+		<GHTouchableOpacity style={containerStyle} onPress={handlePlay} activeOpacity={0.7}>
 			<GHTouchableOpacity onLongPress={drag} delayLongPress={0} style={styles.dragHandle}>
 				<Icon as={GripVertical} size={20} color={colors.onSurfaceVariant} />
 			</GHTouchableOpacity>
@@ -90,10 +90,10 @@ export const QueueTrackItem = memo(function QueueTrackItem({
 				</Text>
 			</View>
 
-			<RNTouchableOpacity onPress={handleRemove} hitSlop={8} style={styles.removeButton}>
+			<GHTouchableOpacity onPress={handleRemove} hitSlop={8} style={styles.removeButton}>
 				<Icon as={X} size={20} color={colors.onSurfaceVariant} style={{ opacity: 0.5 }} />
-			</RNTouchableOpacity>
-		</RNTouchableOpacity>
+			</GHTouchableOpacity>
+		</GHTouchableOpacity>
 	);
 });
 
