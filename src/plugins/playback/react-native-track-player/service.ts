@@ -15,6 +15,9 @@ import { getAlbumIdString } from '@/src/domain/value-objects/album-id';
 const logger = getLogger('RNTPPlaybackService');
 const MIN_SEEK_POSITION = 0;
 const ANDROID_AUTO_TRACK_ID_PREFIX = 'android_auto_track:';
+const ANDROID_AUTO_BROWSE_TRACK_ID_PREFIX = 'android_auto_browse_track:';
+const ANDROID_AUTO_NATIVE_TRACK_ID_PREFIX = 'android_auto_native_track:';
+const ANDROID_AUTO_REMOTE_SKIP_SETTLE_MS = 120;
 
 interface AndroidAutoBrowseItem {
 	readonly id: string;
@@ -50,6 +53,116 @@ async function ensureStoresHydrated(): Promise<void> {
 
 const browseTrackCache = new Map<string, Track>();
 
+interface AndroidAutoPlayContext {
+	readonly tracks: Track[];
+	readonly index: number;
+}
+
+const browsePlayContextCache = new Map<string, AndroidAutoPlayContext>();
+
+function delay(ms: number): Promise<void> {
+	return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function getTrackArtwork(track: Track): string {
+	return track.artwork?.[0]?.url || '';
+}
+
+function cacheAndroidAutoTrackContext(
+	contextId: string,
+	tracks: Track[],
+	index: number,
+	prefix = ANDROID_AUTO_BROWSE_TRACK_ID_PREFIX
+): string {
+	const track = tracks[index];
+	const trackId = getTrackIdString(track.id);
+	const mediaId = `${prefix}${encodeURIComponent(contextId)}:${index}:${encodeURIComponent(trackId)}`;
+	browseTrackCache.set(trackId, track);
+	browsePlayContextCache.set(mediaId, { tracks, index });
+	return mediaId;
+}
+
+function createTrackBrowseItems(
+	contextId: string,
+	tracks: Track[],
+	idPrefix = ANDROID_AUTO_BROWSE_TRACK_ID_PREFIX
+): AndroidAutoBrowseItem[] {
+	return tracks.map((track, index) => ({
+		id: cacheAndroidAutoTrackContext(contextId, tracks, index, idPrefix),
+		title: track.title,
+		subtitle: getArtistNames(track),
+		playable: true,
+		browsable: false,
+		iconUri: getTrackArtwork(track),
+	}));
+}
+
+function getTrackIdFromAndroidAutoMediaId(mediaId: string): string {
+	if (!mediaId.startsWith(ANDROID_AUTO_BROWSE_TRACK_ID_PREFIX)) {
+		return mediaId;
+	}
+
+	const payload = mediaId.slice(ANDROID_AUTO_BROWSE_TRACK_ID_PREFIX.length);
+	const [, , encodedTrackId] = payload.split(':');
+	if (!encodedTrackId) {
+		return mediaId;
+	}
+
+	try {
+		return decodeURIComponent(encodedTrackId);
+	} catch {
+		return mediaId;
+	}
+}
+
+async function getNativeActiveQueueIndex(): Promise<number | null> {
+	try {
+		const nativeTrack = await TrackPlayer.getActiveTrack();
+		const nativeTrackId = typeof nativeTrack?.id === 'string' ? nativeTrack.id : undefined;
+		if (!nativeTrackId) return null;
+
+		const queue = usePlayerStore.getState().queue;
+		const index = queue.findIndex((track) => getTrackIdString(track.id) === nativeTrackId);
+		return index >= 0 ? index : null;
+	} catch (error) {
+		logger.debug(
+			'Unable to read native active track for Android Auto skip alignment',
+			error instanceof Error ? error : undefined
+		);
+		return null;
+	}
+}
+
+async function handleAndroidAutoRemoteSkip(direction: 'next' | 'previous'): Promise<void> {
+	const beforeIndex = usePlayerStore.getState().queueIndex;
+
+	await delay(ANDROID_AUTO_REMOTE_SKIP_SETTLE_MS);
+
+	const latestState = usePlayerStore.getState();
+	const nativeQueueIndex = await getNativeActiveQueueIndex();
+
+	if (nativeQueueIndex !== null && nativeQueueIndex !== beforeIndex) {
+		logger.debug(
+			`Android Auto ${direction} already moved native session to queue index ${nativeQueueIndex}; aligning app queue`
+		);
+		if (latestState.queueIndex !== nativeQueueIndex) {
+			playbackService.setQueue(latestState.queue, nativeQueueIndex);
+		}
+		return;
+	}
+
+	if (latestState.queueIndex !== beforeIndex) {
+		logger.debug(`Android Auto ${direction} already handled by app queue alignment`);
+		return;
+	}
+
+	if (direction === 'next') {
+		await playbackService.skipToNext();
+	} else {
+		await playbackService.skipToPrevious();
+	}
+}
+
 export async function PlaybackService(): Promise<void> {
 	logger.debug('PlaybackService initializing - registering remote control handlers');
 
@@ -69,13 +182,13 @@ export async function PlaybackService(): Promise<void> {
 	});
 
 	TrackPlayer.addEventListener(Event.RemoteNext, () => {
-		logger.debug('RemoteNext received (service) - skipping next');
-		void playbackService.skipToNext();
+		logger.debug('RemoteNext received (service) - aligning Android Auto skip next');
+		void handleAndroidAutoRemoteSkip('next');
 	});
 
 	TrackPlayer.addEventListener(Event.RemotePrevious, () => {
-		logger.debug('RemotePrevious received (service) - skipping previous');
-		void playbackService.skipToPrevious();
+		logger.debug('RemotePrevious received (service) - aligning Android Auto skip previous');
+		void handleAndroidAutoRemoteSkip('previous');
 	});
 
 	TrackPlayer.addEventListener(Event.RemoteSeek, (event) => {
@@ -133,19 +246,25 @@ export async function PlaybackService(): Promise<void> {
 				];
 			} else if (event.parentId === 'feed') {
 				const { sections } = useHomeFeedStore.getState();
+				const feedTracks: Track[] = [];
 				items = sections
 					.flatMap((section) =>
 						section.items.flatMap((item): AndroidAutoBrowseItem[] => {
 							if (item.type === 'track') {
-								browseTrackCache.set(getTrackIdString(item.data.id), item.data);
+								feedTracks.push(item.data);
+								const trackIndex = feedTracks.length - 1;
 								return [
 									{
-										id: getTrackIdString(item.data.id),
+										id: cacheAndroidAutoTrackContext(
+											'feed',
+											feedTracks,
+											trackIndex
+										),
 										title: item.data.title,
 										subtitle: getArtistNames(item.data),
 										playable: true,
 										browsable: false,
-										iconUri: item.data.artwork?.[0]?.url || '',
+										iconUri: getTrackArtwork(item.data),
 									},
 								];
 							}
@@ -214,17 +333,7 @@ export async function PlaybackService(): Promise<void> {
 				];
 			} else if (event.parentId === 'library_recent') {
 				const recentTracks = useHistoryStore.getState().getRecentTracks(30);
-				items = recentTracks.map((track) => {
-					browseTrackCache.set(getTrackIdString(track.id), track);
-					return {
-						id: getTrackIdString(track.id),
-						title: track.title,
-						subtitle: getArtistNames(track),
-						playable: true,
-						browsable: false,
-						iconUri: track.artwork?.[0]?.url || '',
-					};
-				});
+				items = createTrackBrowseItems('library_recent', recentTracks);
 
 				if (items.length === 0) {
 					items.push({
@@ -236,21 +345,13 @@ export async function PlaybackService(): Promise<void> {
 					});
 				}
 			} else if (event.parentId === 'library_downloads') {
-				const completedDownloads = Array.from(useDownloadStore.getState().downloads.values())
-					.filter((info) => info.status === 'completed');
-
-				items = completedDownloads.map((downloadInfo) => {
-					const track = createTrackFromDownloadInfo(downloadInfo);
-					browseTrackCache.set(getTrackIdString(track.id), track);
-					return {
-						id: getTrackIdString(track.id),
-						title: track.title,
-						subtitle: getArtistNames(track),
-						playable: true,
-						browsable: false,
-						iconUri: track.artwork?.[0]?.url || '',
-					};
-				});
+				const completedDownloads = Array.from(
+					useDownloadStore.getState().downloads.values()
+				).filter((info) => info.status === 'completed');
+				const downloadedTracks = completedDownloads.map((downloadInfo) =>
+					createTrackFromDownloadInfo(downloadInfo)
+				);
+				items = createTrackBrowseItems('library_downloads', downloadedTracks);
 
 				if (items.length === 0) {
 					items.push({
@@ -263,17 +364,7 @@ export async function PlaybackService(): Promise<void> {
 				}
 			} else if (event.parentId === 'library_tracks') {
 				const favorites = useLibraryStore.getState().getFavoriteTracks();
-				items = favorites.map((track) => {
-					browseTrackCache.set(getTrackIdString(track.id), track);
-					return {
-						id: getTrackIdString(track.id),
-						title: track.title,
-						subtitle: getArtistNames(track),
-						playable: true,
-						browsable: false,
-						iconUri: track.artwork?.[0]?.url || '',
-					};
-				});
+				items = createTrackBrowseItems('library_tracks', favorites);
 
 				if (items.length === 0) {
 					items.push({
@@ -309,20 +400,14 @@ export async function PlaybackService(): Promise<void> {
 				}
 			} else if (event.parentId.startsWith('playlist_tracks:')) {
 				const playlistId = event.parentId.slice('playlist_tracks:'.length);
-				const playlist = useLibraryStore.getState().playlists.find((p) => p.id === playlistId);
+				const playlist = useLibraryStore
+					.getState()
+					.playlists.find((p) => p.id === playlistId);
 				if (playlist) {
-					items = playlist.tracks.map((pt) => {
-						const track = pt.track;
-						browseTrackCache.set(getTrackIdString(track.id), track);
-						return {
-							id: getTrackIdString(track.id),
-							title: track.title,
-							subtitle: getArtistNames(track),
-							playable: true,
-							browsable: false,
-							iconUri: track.artwork?.[0]?.url || '',
-						};
-					});
+					items = createTrackBrowseItems(
+						`playlist_tracks:${playlistId}`,
+						playlist.tracks.map((pt) => pt.track)
+					);
 				}
 
 				if (items.length === 0) {
@@ -339,17 +424,10 @@ export async function PlaybackService(): Promise<void> {
 				const { albumService } = await import('@/src/application/services/album-service');
 				const albumResult = await albumService.getAlbumDetail(albumId);
 				if (albumResult.success && albumResult.data) {
-					items = albumResult.data.tracks.map((track) => {
-						browseTrackCache.set(getTrackIdString(track.id), track);
-						return {
-							id: getTrackIdString(track.id),
-							title: track.title,
-							subtitle: getArtistNames(track),
-							playable: true,
-							browsable: false,
-							iconUri: track.artwork?.[0]?.url || '',
-						};
-					});
+					items = createTrackBrowseItems(
+						`album_tracks:${albumId}`,
+						albumResult.data.tracks
+					);
 				}
 
 				if (items.length === 0) {
@@ -366,14 +444,18 @@ export async function PlaybackService(): Promise<void> {
 				const currentIndex = usePlayerStore.getState().queueIndex;
 				items = appQueue.map((track, i) => {
 					browseTrackCache.set(getTrackIdString(track.id), track);
+					browsePlayContextCache.set(`${ANDROID_AUTO_TRACK_ID_PREFIX}${i}`, {
+						tracks: appQueue,
+						index: i,
+					});
 					const isCurrent = i === currentIndex;
 					return {
 						id: `${ANDROID_AUTO_TRACK_ID_PREFIX}${i}`,
 						title: track.title,
-						subtitle: `${isCurrent ? '▶ ' : ''}${getArtistNames(track)}`,
+						subtitle: `${isCurrent ? 'Now playing - ' : ''}${getArtistNames(track)}`,
 						playable: true,
 						browsable: false,
-						iconUri: track.artwork?.[0]?.url || '',
+						iconUri: getTrackArtwork(track),
 					};
 				});
 
@@ -398,11 +480,11 @@ export async function PlaybackService(): Promise<void> {
 				}
 				items.unshift({
 					id: 'android_auto_mini_player',
-					title: `${isPlaying ? '⏸ Now Playing: ' : '▶ Paused: '}${currentTrack.title}`,
+					title: `${isPlaying ? 'Now Playing: ' : 'Paused: '}${currentTrack.title}`,
 					subtitle: getArtistNames(currentTrack),
 					playable: true,
 					browsable: false,
-					iconUri: currentTrack.artwork?.[0]?.url || '',
+					iconUri: getTrackArtwork(currentTrack),
 				});
 			}
 
@@ -447,12 +529,30 @@ export async function PlaybackService(): Promise<void> {
 
 			const store = usePlayerStore.getState();
 			const appQueue = store.queue;
+			const playContext = browsePlayContextCache.get(event.mediaId);
+
+			if (playContext) {
+				logger.debug(
+					`Playing Android Auto browse context at index ${playContext.index} (${playContext.tracks.length} tracks)`
+				);
+				playbackService.setQueue(playContext.tracks, playContext.index);
+				return;
+			}
 
 			let index = -1;
 			if (event.mediaId.startsWith(ANDROID_AUTO_TRACK_ID_PREFIX)) {
-				index = Number.parseInt(event.mediaId.slice(ANDROID_AUTO_TRACK_ID_PREFIX.length), 10);
+				index = Number.parseInt(
+					event.mediaId.slice(ANDROID_AUTO_TRACK_ID_PREFIX.length),
+					10
+				);
+			} else if (event.mediaId.startsWith(ANDROID_AUTO_NATIVE_TRACK_ID_PREFIX)) {
+				logger.debug(
+					'Native Android Auto track id received after native fallback; waiting for native session alignment'
+				);
+				return;
 			} else {
-				index = appQueue.findIndex((t) => getTrackIdString(t.id) === event.mediaId);
+				const trackId = getTrackIdFromAndroidAutoMediaId(event.mediaId);
+				index = appQueue.findIndex((t) => getTrackIdString(t.id) === trackId);
 			}
 
 			if (index >= 0 && index < appQueue.length) {
@@ -460,7 +560,7 @@ export async function PlaybackService(): Promise<void> {
 				playbackService.setQueue(appQueue, index);
 			} else {
 				// Not in active queue, check cache
-				const track = browseTrackCache.get(event.mediaId);
+				const track = browseTrackCache.get(getTrackIdFromAndroidAutoMediaId(event.mediaId));
 				if (track) {
 					logger.debug(`Playing cached track: ${track.title}`);
 					playbackService.setQueue([track], 0);
@@ -469,7 +569,10 @@ export async function PlaybackService(): Promise<void> {
 				}
 			}
 		} catch (err) {
-			logger.error('Error playing track in remote-play-id', err instanceof Error ? err : undefined);
+			logger.error(
+				'Error playing track in remote-play-id',
+				err instanceof Error ? err : undefined
+			);
 		}
 	});
 
