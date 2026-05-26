@@ -9,6 +9,8 @@ import { useDownloadStore } from '@/src/application/state/download-store';
 import { createTrackFromDownloadInfo } from '@/src/domain/utils/create-track-from-download';
 import { playbackService } from '@/src/application/services/playback-service';
 import type { Track } from '@/src/domain/entities/track';
+import { getTrackIdString } from '@/src/domain/value-objects/track-id';
+import { getAlbumIdString } from '@/src/domain/value-objects/album-id';
 
 const logger = getLogger('RNTPPlaybackService');
 const MIN_SEEK_POSITION = 0;
@@ -23,6 +25,27 @@ interface AndroidAutoBrowseItem {
 	readonly iconUri?: string;
 	readonly gridBrowsable?: boolean;
 	readonly gridPlayable?: boolean;
+}
+
+async function ensureStoresHydrated(): Promise<void> {
+	const stores = [useLibraryStore, useHistoryStore, useDownloadStore, useHomeFeedStore];
+	await Promise.all(
+		stores.map((store) => {
+			if (store.persist?.hasHydrated && !store.persist.hasHydrated()) {
+				return new Promise<void>((resolve) => {
+					const check = () => {
+						if (store.persist.hasHydrated()) {
+							resolve();
+						} else {
+							setTimeout(check, 50);
+						}
+					};
+					check();
+				});
+			}
+			return Promise.resolve();
+		})
+	);
 }
 
 const browseTrackCache = new Map<string, Track>();
@@ -79,6 +102,7 @@ export async function PlaybackService(): Promise<void> {
 		try {
 			const { ensureBootstrapped } = await import('@/src/application/bootstrap');
 			await ensureBootstrapped();
+			await ensureStoresHydrated();
 
 			let items: AndroidAutoBrowseItem[] = [];
 			if (event.parentId === 'root') {
@@ -113,10 +137,10 @@ export async function PlaybackService(): Promise<void> {
 					.flatMap((section) =>
 						section.items.flatMap((item): AndroidAutoBrowseItem[] => {
 							if (item.type === 'track') {
-								browseTrackCache.set(item.data.id.value, item.data);
+								browseTrackCache.set(getTrackIdString(item.data.id), item.data);
 								return [
 									{
-										id: item.data.id.value,
+										id: getTrackIdString(item.data.id),
 										title: item.data.title,
 										subtitle: getArtistNames(item.data),
 										playable: true,
@@ -128,7 +152,7 @@ export async function PlaybackService(): Promise<void> {
 							if (item.type === 'album') {
 								return [
 									{
-										id: `album_tracks:${item.data.id.value}`,
+										id: `album_tracks:${getAlbumIdString(item.data.id)}`,
 										title: item.data.name,
 										subtitle:
 											item.data.artists
@@ -191,9 +215,9 @@ export async function PlaybackService(): Promise<void> {
 			} else if (event.parentId === 'library_recent') {
 				const recentTracks = useHistoryStore.getState().getRecentTracks(30);
 				items = recentTracks.map((track) => {
-					browseTrackCache.set(track.id.value, track);
+					browseTrackCache.set(getTrackIdString(track.id), track);
 					return {
-						id: track.id.value,
+						id: getTrackIdString(track.id),
 						title: track.title,
 						subtitle: getArtistNames(track),
 						playable: true,
@@ -217,9 +241,9 @@ export async function PlaybackService(): Promise<void> {
 
 				items = completedDownloads.map((downloadInfo) => {
 					const track = createTrackFromDownloadInfo(downloadInfo);
-					browseTrackCache.set(track.id.value, track);
+					browseTrackCache.set(getTrackIdString(track.id), track);
 					return {
-						id: track.id.value,
+						id: getTrackIdString(track.id),
 						title: track.title,
 						subtitle: getArtistNames(track),
 						playable: true,
@@ -240,9 +264,9 @@ export async function PlaybackService(): Promise<void> {
 			} else if (event.parentId === 'library_tracks') {
 				const favorites = useLibraryStore.getState().getFavoriteTracks();
 				items = favorites.map((track) => {
-					browseTrackCache.set(track.id.value, track);
+					browseTrackCache.set(getTrackIdString(track.id), track);
 					return {
-						id: track.id.value,
+						id: getTrackIdString(track.id),
 						title: track.title,
 						subtitle: getArtistNames(track),
 						playable: true,
@@ -289,9 +313,9 @@ export async function PlaybackService(): Promise<void> {
 				if (playlist) {
 					items = playlist.tracks.map((pt) => {
 						const track = pt.track;
-						browseTrackCache.set(track.id.value, track);
+						browseTrackCache.set(getTrackIdString(track.id), track);
 						return {
-							id: track.id.value,
+							id: getTrackIdString(track.id),
 							title: track.title,
 							subtitle: getArtistNames(track),
 							playable: true,
@@ -316,9 +340,9 @@ export async function PlaybackService(): Promise<void> {
 				const albumResult = await albumService.getAlbumDetail(albumId);
 				if (albumResult.success && albumResult.data) {
 					items = albumResult.data.tracks.map((track) => {
-						browseTrackCache.set(track.id.value, track);
+						browseTrackCache.set(getTrackIdString(track.id), track);
 						return {
-							id: track.id.value,
+							id: getTrackIdString(track.id),
 							title: track.title,
 							subtitle: getArtistNames(track),
 							playable: true,
@@ -341,7 +365,7 @@ export async function PlaybackService(): Promise<void> {
 				const appQueue = usePlayerStore.getState().queue;
 				const currentIndex = usePlayerStore.getState().queueIndex;
 				items = appQueue.map((track, i) => {
-					browseTrackCache.set(track.id.value, track);
+					browseTrackCache.set(getTrackIdString(track.id), track);
 					const isCurrent = i === currentIndex;
 					return {
 						id: `${ANDROID_AUTO_TRACK_ID_PREFIX}${i}`,
@@ -408,6 +432,7 @@ export async function PlaybackService(): Promise<void> {
 		try {
 			const { ensureBootstrapped } = await import('@/src/application/bootstrap');
 			await ensureBootstrapped();
+			await ensureStoresHydrated();
 
 			if (event.mediaId === 'android_auto_mini_player') {
 				logger.debug('Mini player action received - toggling play/pause');
@@ -427,7 +452,7 @@ export async function PlaybackService(): Promise<void> {
 			if (event.mediaId.startsWith(ANDROID_AUTO_TRACK_ID_PREFIX)) {
 				index = Number.parseInt(event.mediaId.slice(ANDROID_AUTO_TRACK_ID_PREFIX.length), 10);
 			} else {
-				index = appQueue.findIndex((t) => t.id.value === event.mediaId);
+				index = appQueue.findIndex((t) => getTrackIdString(t.id) === event.mediaId);
 			}
 
 			if (index >= 0 && index < appQueue.length) {

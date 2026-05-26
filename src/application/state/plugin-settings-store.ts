@@ -184,7 +184,8 @@ export function waitForPluginSettingsHydration(): Promise<void> {
 }
 
 export function getEnabledPluginsSet(): Set<string> {
-	return new Set(usePluginSettingsStore.getState().enabledPlugins);
+	const state = usePluginSettingsStore.getState();
+	return new Set([...REQUIRED_PLUGINS, ...state.enabledPlugins]);
 }
 
 export function getPluginConfigs(): Record<string, PluginConfig> {

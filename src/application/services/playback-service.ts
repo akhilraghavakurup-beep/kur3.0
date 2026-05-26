@@ -1,6 +1,7 @@
 import type { AudioFormat, AudioStream, Track } from '@/src/domain';
 import { createAudioStream, Duration, getPlaybackUri, isLocallyAvailable } from '@/src/domain';
 import type { RepeatMode } from '@/src/domain/value-objects/playback-state';
+import { getTrackIdString } from '@/src/domain/value-objects/track-id';
 import type {
 	AudioSourceProvider,
 	PlaybackEvent,
@@ -33,6 +34,7 @@ export class PlaybackService {
 	private audioSourceProviders: AudioSourceProvider[] = [];
 	private eventListener: PlaybackEventListener | null = null;
 	private playLock: Promise<void> = Promise.resolve();
+	private _playSessionId = 0;
 	private readonly _streamCache = new Map<string, CachedStream>();
 
 	constructor() {
@@ -136,6 +138,7 @@ export class PlaybackService {
 
 	async play(track: Track): Promise<Result<void, Error>> {
 		return this.withPlayLock(async () => {
+			const sessionId = ++this._playSessionId;
 			playbackTimer.start(track.title);
 			usePlayerStore.getState().play(track);
 
@@ -147,8 +150,16 @@ export class PlaybackService {
 				rntpProvider.setTransitioning(true);
 			}
 
-			const streamResult = await this._resolveStreamForTrack(track);
+			const streamResult = await this._resolveStreamForTrack(track, sessionId);
+			if (sessionId !== this._playSessionId) {
+				logger.debug(`Play session ${sessionId} was superseded by a newer request. Aborting...`);
+				return ok(undefined);
+			}
+
 			if (!streamResult.success) {
+				if (streamResult.error.message === 'superseded') {
+					return ok(undefined);
+				}
 				if (rntpProvider && rntpProvider.setTransitioning) {
 					rntpProvider.setTransitioning(false);
 				}
@@ -163,11 +174,14 @@ export class PlaybackService {
 	 * Resolves the audio stream first before stopping the active provider
 	 * to prevent Android Auto timeouts and gapless/smooth track changes.
 	 */
-	private async _resolveStreamForTrack(track: Track): Promise<Result<AudioStream, Error>> {
+	private async _resolveStreamForTrack(track: Track, sessionId: number): Promise<Result<AudioStream, Error>> {
 		playbackTimer.beginPhase('resolve+stop');
 
 		// 1. Resolve stream URL first (takes 1-3 seconds)
 		const streamResult = await this._getAudioStream(track);
+		if (sessionId !== this._playSessionId) {
+			return err(new Error('superseded'));
+		}
 
 		// 2. Stop/Reset the active provider only after the stream is ready
 		await this._stopActiveProvider();
@@ -362,7 +376,7 @@ export class PlaybackService {
 			return err(recommendationsResult.error);
 		}
 
-		const recommendations = recommendationsResult.data.filter((item) => item.id.value !== track.id.value);
+		const recommendations = recommendationsResult.data.filter((item) => getTrackIdString(item.id) !== getTrackIdString(track.id));
 		if (recommendations.length === 0) {
 			return ok(0);
 		}
@@ -399,7 +413,7 @@ export class PlaybackService {
 			const fallbackSearch = await provider.searchTracks(fallbackQuery, { limit: limit + 5 });
 			if (fallbackSearch.success) {
 				const items = fallbackSearch.data.items.filter(
-					(item) => item.id.value !== track.id.value
+					(item) => getTrackIdString(item.id) !== getTrackIdString(track.id)
 				);
 				if (items.length > 0) {
 					return ok(items.slice(0, limit));
@@ -448,7 +462,7 @@ export class PlaybackService {
 	private async _getAudioStream(track: Track): Promise<Result<AudioStream, Error>> {
 		logger.debug('getAudioStream called for track:', track.title);
 
-		const cachedStream = this._getCachedStream(track.id.value);
+		const cachedStream = this._getCachedStream(getTrackIdString(track.id));
 		if (cachedStream) return ok(cachedStream);
 
 		const localResult = await this._tryLocalSource(track);
@@ -476,7 +490,7 @@ export class PlaybackService {
 
 		if (resolvedSource.type === 'downloaded') {
 			logger.warn(`Downloaded file missing, removing: ${filePath}`);
-			await downloadService.removeDownload(track.id.value);
+			await downloadService.removeDownload(getTrackIdString(track.id));
 		}
 		return null;
 	}
@@ -532,7 +546,7 @@ export class PlaybackService {
 		});
 		if (result.success) {
 			logger.debug('Got audio stream successfully');
-			this._cacheStream(track.id.value, result.data);
+			this._cacheStream(getTrackIdString(track.id), result.data);
 			return ok(result.data);
 		}
 		logger.debug('getStreamUrl failed:', result.error);
@@ -551,7 +565,7 @@ export class PlaybackService {
 					quality: useSettingsStore.getState().preferredStreamQuality,
 				});
 				if (result.success) {
-					this._cacheStream(track.id.value, result.data);
+					this._cacheStream(getTrackIdString(track.id), result.data);
 					return ok(result.data);
 				}
 			} catch {}

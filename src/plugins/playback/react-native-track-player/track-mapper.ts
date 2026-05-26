@@ -7,6 +7,7 @@
 import type { Track as RNTPTrack } from 'react-native-track-player';
 import type { Track } from '@domain/entities/track';
 import { getArtistNames, getArtworkUrl } from '@domain/entities/track';
+import { getTrackIdString } from '@/src/domain/value-objects/track-id';
 
 const EXTENSION_MIME_MAP: Record<string, string> = {
 	m4a: 'audio/mp4',
@@ -34,7 +35,7 @@ export function mapToRNTPTrack(
 	headers?: Record<string, string>
 ): RNTPTrack {
 	return {
-		id: track.id.value,
+		id: getTrackIdString(track.id),
 		url: streamUrl,
 		title: track.title,
 		artist: getArtistNames(track),
