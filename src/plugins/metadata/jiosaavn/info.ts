@@ -68,7 +68,7 @@ export function createInfoOperations(client: JioSaavnClient): InfoOperations {
 		},
 		async getArtistInfo(artistId) {
 			try {
-				const normalizedId = stripSourcePrefix(artistId);
+				const normalizedId = stripSourcePrefix(artistId).replace(/^(artist|featured|playlist|album)_/, '');
 				let artist;
 				try {
 					artist = await client.getArtist(normalizedId);

@@ -120,13 +120,12 @@ const styles = StyleSheet.create({
 		flexDirection: 'row',
 		justifyContent: 'center',
 		alignItems: 'center',
-		paddingHorizontal: 8,
+		gap: 12,
 	},
 	secondaryButton: {
 		margin: 0,
 	},
 	fabWrapper: {
-		marginHorizontal: 16,
 		alignItems: 'center',
 		justifyContent: 'center',
 	},

@@ -45,6 +45,7 @@ export const ProgressTrack = memo(function ProgressTrack({
 	currentTime,
 	totalTime,
 	disabled = false,
+	seedString,
 }: ProgressTrackProps) {
 	const { trackWidth, handleLayout } = useTrackLayout();
 	const isBasic =
@@ -105,15 +106,18 @@ export const ProgressTrack = memo(function ProgressTrack({
 					stopCx,
 					colors,
 					waveAnimatedProps,
+					seedString,
 				})}
 
-			<Animated.View
-				style={[
-					thumbAnimatedStyle,
-					isBasic ? styles.basicThumb : isVariant ? styles.variantThumb : styles.thumb,
-					{ left: thumbOffset, backgroundColor: colors.primary },
-				]}
-			/>
+			{variant !== 'waveform' && (
+				<Animated.View
+					style={[
+						thumbAnimatedStyle,
+						isBasic ? styles.basicThumb : isVariant ? styles.variantThumb : styles.thumb,
+						{ left: thumbOffset, backgroundColor: colors.primary },
+					]}
+				/>
+			)}
 		</View>
 	);
 

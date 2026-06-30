@@ -103,28 +103,38 @@ export class ArtistService {
 		for (const provider of targetProviders) {
 			try {
 				let idToUse = rawId || artistId;
+				// Strip common JioSaavn prefixes from the ID (e.g. artist_12345 -> 12345)
+				idToUse = idToUse.replace(/^(artist|featured|playlist|album)_/, '');
+
 				logger.debug(`Fetching artist ${idToUse} from ${provider.manifest.id}`);
 
-				let artistInfoResult = provider.hasCapability('get-artist-info')
+				const isNumericId = /^\d+$/.test(idToUse);
+				let artistInfoResult = (isNumericId && provider.hasCapability('get-artist-info'))
 					? await provider.getArtistInfo(idToUse)
-					: { success: false as const, error: new Error('Not supported') };
+					: { success: false as const, error: new Error('Invalid or non-numeric ID') };
 				let artistFromSearch: Artist | null = null;
+
+				const queryName = fallbackName || (!isNumericId ? idToUse.replace(/-/g, ' ') : undefined);
 
 				if (
 					!artistInfoResult.success &&
-					fallbackName &&
+					queryName &&
 					provider.hasCapability('search-artists')
 				) {
-					const searchResult = await provider.searchArtists(fallbackName, { limit: 5 });
+					const searchResult = await provider.searchArtists(queryName, { limit: 5 });
 					if (searchResult.success && searchResult.data.items.length > 0) {
 						const matchedArtist = this._pickBestArtistMatch(
 							searchResult.data.items,
-							fallbackName
+							queryName
 						);
 						if (matchedArtist) {
 							artistFromSearch = matchedArtist;
-							idToUse = this._extractProviderArtistId(matchedArtist.id) ?? idToUse;
-							if (provider.hasCapability('get-artist-info')) {
+							let cleanMatchedId = this._extractProviderArtistId(matchedArtist.id) ?? idToUse;
+							cleanMatchedId = cleanMatchedId.replace(/^(artist|featured|playlist|album)_/, '');
+							idToUse = cleanMatchedId;
+
+							const isNumericMatchedId = /^\d+$/.test(idToUse);
+							if (isNumericMatchedId && provider.hasCapability('get-artist-info')) {
 								artistInfoResult = await provider.getArtistInfo(idToUse);
 							}
 						}

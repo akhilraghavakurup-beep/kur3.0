@@ -156,18 +156,44 @@ function renderExpressiveTrack(params: TrackRenderParams) {
 }
 
 function renderWaveformTrack(params: TrackRenderParams) {
-	const { trackWidth, activeEnd, colors } = params;
-	const barWidth = 4;
-	const gap = 3;
-	const heights = [8, 14, 10, 18, 12, 16, 9, 15, 11, 17, 8, 13];
+	const { trackWidth, activeEnd, colors, seedString } = params;
+	const barWidth = 3;
+	const gap = 2;
 	const count = Math.max(1, Math.floor(trackWidth / (barWidth + gap)));
-	const centerY = 10;
+	const maxBarHeight = 28;
+	const minBarHeight = 4;
+	const centerY = 16;
+
+	// Helper to generate a consistent, unique bar height seeded by track information
+	const getBarHeight = (idx: number) => {
+		if (!seedString) {
+			const staticHeights = [8, 14, 10, 18, 12, 16, 9, 15, 11, 17, 8, 13];
+			return staticHeights[idx % staticHeights.length];
+		}
+
+		let hash = 0;
+		const str = seedString + String(idx);
+		for (let i = 0; i < str.length; i++) {
+			hash = (hash << 5) - hash + str.charCodeAt(i);
+			hash |= 0;
+		}
+		const absHash = Math.abs(hash);
+		return minBarHeight + (absHash % (maxBarHeight - minBarHeight + 1));
+	};
 
 	return (
-		<Svg width={trackWidth} height={20} style={styles.basicTrackSvg}>
+		<Svg
+			width={trackWidth}
+			height={32}
+			style={{
+				position: 'absolute',
+				top: 12, // perfectly centered in the 56px container
+				left: 0,
+			}}
+		>
 			{Array.from({ length: count }, (_, index) => {
 				const x = index * (barWidth + gap);
-				const height = heights[index % heights.length];
+				const height = getBarHeight(index);
 				const y1 = centerY - height / 2;
 				const y2 = centerY + height / 2;
 				const isActive = x + barWidth <= activeEnd;
@@ -179,7 +205,7 @@ function renderWaveformTrack(params: TrackRenderParams) {
 						y1={y1}
 						x2={x + barWidth / 2}
 						y2={y2}
-						stroke={isActive ? colors.primary : colors.primaryContainer}
+						stroke={isActive ? colors.primary : `${colors.onSurfaceVariant}26`}
 						strokeWidth={barWidth}
 						strokeLinecap={'round'}
 					/>

@@ -116,8 +116,9 @@ export class JioSaavnProvider implements MetadataProvider, AudioSourceProvider {
 			return Promise.resolve(err(new Error('JioSaavn recommendations require a JioSaavn track')));
 		}
 
+		const language = getHomeContentLanguageHeader();
 		return this.client
-			.getSongSuggestions(seedTrack.sourceId, limit)
+			.getSongSuggestions(seedTrack.sourceId, limit, language)
 			.then((songs) =>
 				ok(
 					songs
@@ -142,9 +143,11 @@ export class JioSaavnProvider implements MetadataProvider, AudioSourceProvider {
 		}
 
 		try {
-			const language = getHomeContentLanguageHeader();
-			const stationId = await this.client.createArtistStation(artistName, language);
-			const songs = await this.client.getRadioSongs(stationId, limit, 1, language);
+			const languageHeader = getHomeContentLanguageHeader();
+			// Extract the first language as primary radio language (JioSaavn webradio expects a single language)
+			const primaryLanguage = languageHeader.split(',')[0] || 'english';
+			const stationId = await this.client.createArtistStation(artistName, primaryLanguage);
+			const songs = await this.client.getRadioSongs(stationId, limit, 1, primaryLanguage);
 			return ok(songs.map(mapSong).filter((track): track is Track => !!track));
 		} catch (error) {
 			return err(error instanceof Error ? error : new Error(String(error)));

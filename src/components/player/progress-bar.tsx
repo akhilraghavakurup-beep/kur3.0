@@ -14,6 +14,7 @@ import {
 	usePlaybackProgress,
 	useIsPlaying,
 	useIsLoading,
+	useCurrentTrack,
 } from '@/src/application/state/player-store';
 import { Duration } from '@/src/domain/value-objects/duration';
 import { useCallback } from 'react';
@@ -38,6 +39,7 @@ export function ProgressBar({ seekable = true }: ProgressBarProps) {
 	const { position, duration } = usePlaybackProgress();
 	const isPlaying = useIsPlaying();
 	const isLoading = useIsLoading();
+	const currentTrack = useCurrentTrack();
 	const { seekTo } = usePlayerActions();
 	const { colors } = usePlayerTheme();
 	const barStyle = useProgressBarStyle();
@@ -65,6 +67,10 @@ export function ProgressBar({ seekable = true }: ProgressBarProps) {
 		[isLoading]
 	);
 
+	const seedString = currentTrack
+		? `${currentTrack.title}_${currentTrack.artists[0]?.name || ''}`
+		: undefined;
+
 	return (
 		<Animated.View style={[animatedStyle, styles.container]} needsOffscreenAlphaCompositing>
 			<ProgressTrack
@@ -78,6 +84,7 @@ export function ProgressBar({ seekable = true }: ProgressBarProps) {
 				currentTime={currentTime}
 				totalTime={totalTime}
 				disabled={isDisabled}
+				seedString={seedString}
 			/>
 		</Animated.View>
 	);

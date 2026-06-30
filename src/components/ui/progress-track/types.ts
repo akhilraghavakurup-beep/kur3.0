@@ -58,6 +58,7 @@ export interface ProgressTrackProps {
 	readonly currentTime?: string;
 	readonly totalTime?: string;
 	readonly disabled?: boolean;
+	readonly seedString?: string;
 }
 
 export interface TrackRenderParams {
@@ -70,4 +71,5 @@ export interface TrackRenderParams {
 	readonly stopCx: number;
 	readonly colors: ProgressTrackColors;
 	readonly waveAnimatedProps: ReturnType<typeof useAnimatedProps>;
+	readonly seedString?: string;
 }

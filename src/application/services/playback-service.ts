@@ -35,6 +35,7 @@ export class PlaybackService {
 	private eventListener: PlaybackEventListener | null = null;
 	private playLock: Promise<void> = Promise.resolve();
 	private _playSessionId = 0;
+	private _preCacheTimeoutId: NodeJS.Timeout | null = null;
 	private readonly _streamCache = new Map<string, CachedStream>();
 
 	constructor() {
@@ -236,7 +237,61 @@ export class PlaybackService {
 		if (!playResult.success) return this._handlePlayError(playResult.error, track);
 
 		playbackTimer.finish();
+
+		// Trigger background pre-caching of the next track
+		this._preCacheNextTrackInBackground().catch((err) => {
+			logger.warn('Failed to pre-cache next track in background:', err);
+		});
+
 		return ok(undefined);
+	}
+
+	private async _preCacheNextTrackInBackground(): Promise<void> {
+		if (this._preCacheTimeoutId) {
+			clearTimeout(this._preCacheTimeoutId);
+			this._preCacheTimeoutId = null;
+		}
+
+		const state = usePlayerStore.getState();
+		if (state.queue.length <= 1) return;
+
+		// Calculate the next index
+		let nextIndex = state.queueIndex + 1;
+		if (nextIndex >= state.queue.length) {
+			if (state.repeatMode === 'all') {
+				nextIndex = 0;
+			} else {
+				return; // No next track to pre-cache
+			}
+		}
+
+		const nextTrack = state.queue[nextIndex];
+		if (!nextTrack) return;
+
+		const nextTrackId = getTrackIdString(nextTrack.id);
+
+		// If already cached, do nothing
+		if (this._getCachedStream(nextTrackId)) {
+			logger.debug(`[Pre-Cache] Track ${nextTrack.title} is already cached`);
+			return;
+		}
+
+		logger.debug(`[Pre-Cache] Queuing background resolution for next track: ${nextTrack.title}`);
+
+		this._preCacheTimeoutId = setTimeout(async () => {
+			try {
+				logger.debug(`[Pre-Cache] Starting background resolution for: ${nextTrack.title}`);
+				const streamResult = await this._getAudioStream(nextTrack);
+				if (streamResult.success) {
+					this._cacheStream(nextTrackId, streamResult.data);
+					logger.debug(`[Pre-Cache] Successfully cached stream for: ${nextTrack.title}`);
+				} else {
+					logger.warn(`[Pre-Cache] Failed to resolve stream for ${nextTrack.title}:`, streamResult.error);
+				}
+			} catch (e) {
+				logger.warn(`[Pre-Cache] Error in background stream resolution for ${nextTrack.title}:`, e);
+			}
+		}, 1000); // 1s delay to prioritize currently starting playback
 	}
 
 	private _handlePlayError(error: Error, track: Track): Result<void, Error> {
@@ -419,6 +474,50 @@ export class PlaybackService {
 					return ok(items.slice(0, limit));
 				}
 			}
+		}
+
+		// Fallback to Library/Favorites matching the artist or general favorites
+		try {
+			const { useLibraryStore } = require('../state/library-store');
+			const libraryStore = useLibraryStore.getState();
+			const libraryTracks = libraryStore.tracks || [];
+
+			if (libraryTracks.length > 0) {
+				let candidates = libraryTracks.filter(
+					(t: Track) => getTrackIdString(t.id) !== getTrackIdString(track.id)
+				);
+
+				if (track.artists.length > 0) {
+					const primaryArtist = track.artists[0].name.toLowerCase();
+					const matchingArtistTracks = candidates.filter((t: Track) =>
+						t.artists.some((a) => a.name.toLowerCase().includes(primaryArtist))
+					);
+					if (matchingArtistTracks.length > 0) {
+						logger.debug(`Library recommendation fallback: found ${matchingArtistTracks.length} tracks matching artist "${primaryArtist}"`);
+						candidates = matchingArtistTracks;
+					}
+				}
+
+				// If no artist match, try favorites
+				if (candidates === libraryTracks && libraryStore.favorites) {
+					const favIds = Array.from(libraryStore.favorites);
+					const matchingFavTracks = libraryTracks.filter(
+						(t: Track) => getTrackIdString(t.id) !== getTrackIdString(track.id) && favIds.includes(getTrackIdString(t.id))
+					);
+					if (matchingFavTracks.length > 0) {
+						logger.debug(`Library recommendation fallback: found ${matchingFavTracks.length} favorites`);
+						candidates = matchingFavTracks;
+					}
+				}
+
+				if (candidates.length > 0) {
+					// Shuffle and slice
+					const shuffled = [...candidates].sort(() => Math.random() - 0.5);
+					return ok(shuffled.slice(0, limit));
+				}
+			}
+		} catch (fallbackError) {
+			logger.warn('Failed to resolve library recommendation fallback', fallbackError);
 		}
 
 		return err(recommendationError ?? new Error('No recommendation provider available for this track'));

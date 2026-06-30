@@ -109,9 +109,9 @@ export class JioSaavnClient {
 		);
 	}
 
-	getSongSuggestions(songId: string, limit = 20, signal?: AbortSignal) {
+	getSongSuggestions(songId: string, limit = 20, language?: string, signal?: AbortSignal) {
 		if (this._usesDirectWebApi()) {
-			return this._webGet<JioSaavnSong[]>('reco.getreco', { pid: songId }, { signal });
+			return this._webGet<JioSaavnSong[]>('reco.getreco', { pid: songId }, { language, signal });
 		}
 		return this._get<JioSaavnSong[]>(`/api/songs/${songId}/suggestions`, { limit }, signal);
 	}
@@ -195,7 +195,7 @@ export class JioSaavnClient {
 	): Promise<JioSaavnArtistPageDetails> {
 		return this._webGet<JioSaavnArtistPageDetails>(
 			'artist.getArtistPageDetails',
-			{ artistId },
+			{ artistId, artist_id: artistId },
 			{ language, signal }
 		);
 	}
